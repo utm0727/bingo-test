@@ -1,0 +1,24 @@
+bingo-game/
+├── client/                 # 前端代码 (部署到 GitHub Pages)
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── game.js
+│   │   ├── admin.js
+│   │   └── api.js
+│   └── pages/
+│       ├── game.html
+│       ├── admin.html
+│       └── leaderboard.html
+│
+└── server/                # 后端代码 (部署到其他服务器)
+    ├── package.json
+    ├── .env
+    └── src/
+        ├── index.js
+        ├── routes/
+        │   └── upload.js
+        └── services/
+            └── drive.js
