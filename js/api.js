@@ -1,6 +1,4 @@
 const API = {
-    baseUrl: 'http://localhost:5000/api', // 添加基础 URL
-
     // 使用 localStorage 模拟数据存储
     storage: {
         questions: [],
@@ -85,9 +83,17 @@ const API = {
 
     // 获取排行榜
     async getLeaderboard() {
-        return this.storage.scores
+        const scores = this.storage.scores
+            .map(score => {
+                const user = this.storage.users.find(u => u.teamName === score.teamName);
+                return {
+                    ...score,
+                    leaderName: user?.leaderName
+                };
+            })
             .sort((a, b) => a.score - b.score)
             .slice(0, 10);
+        return scores;
     },
 
     // 更新管理员信息
@@ -104,22 +110,6 @@ const API = {
         } catch (error) {
             throw new Error('Failed to update admin credentials');
         }
-    },
-
-    // 更新 Google Drive 设置
-    async updateDriveSettings(folderId, apiKey) {
-        const driveSettings = {
-            folderId,
-            apiKey
-        };
-        localStorage.setItem('drive-settings', JSON.stringify(driveSettings));
-        return true;
-    },
-
-    // 获取 Google Drive 设置
-    async getDriveSettings() {
-        const settings = localStorage.getItem('drive-settings');
-        return settings ? JSON.parse(settings) : null;
     },
 
     // 更新游戏设置
@@ -139,22 +129,55 @@ const API = {
 
     // 保存游戏进度
     async saveGameProgress(teamName, progress) {
-        const gameProgress = {
-            teamName,
-            board: progress.board,
-            startTime: progress.startTime,
-            lastSaveTime: Date.now(),
-            totalPlayTime: progress.totalPlayTime || 0,
-            isActive: true
-        };
-        localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(gameProgress));
-        return true;
+        try {
+            console.log('API: 开始保存游戏进度', {
+                teamName: teamName,
+                progress: progress
+            });
+
+            const gameProgress = {
+                teamName,
+                board: progress.board,
+                startTime: progress.startTime,
+                lastSaveTime: Date.now(),
+                totalPlayTime: progress.totalPlayTime || 0,
+                isActive: true
+            };
+
+            // 保存到 localStorage
+            const key = `game-progress-${teamName}`;
+            localStorage.setItem(key, JSON.stringify(gameProgress));
+            
+            // 设置更新标记
+            localStorage.setItem('needsUpdate', 'true');
+            
+            // 触发自定义事件
+            const event = new CustomEvent('gameProgressUpdate', {
+                detail: { teamName, timestamp: Date.now() }
+            });
+            window.dispatchEvent(event);
+
+            return true;
+        } catch (error) {
+            console.error('API: 保存游戏进度失败:', error);
+            throw error;
+        }
     },
 
     // 获取游戏进度
     async getGameProgress(teamName) {
-        const progress = localStorage.getItem(`game-progress-${teamName}`);
-        return progress ? JSON.parse(progress) : null;
+        try {
+            const key = `game-progress-${teamName}`;
+            const progressData = localStorage.getItem(key);
+            console.log('API: 获取游戏进度', {
+                teamName: teamName,
+                data: progressData ? JSON.parse(progressData) : null
+            });
+            return progressData ? JSON.parse(progressData) : null;
+        } catch (error) {
+            console.error('API: 获取游戏进度失败:', error);
+            return null;
+        }
     },
 
     // 清除游戏进度
@@ -169,13 +192,17 @@ const API = {
         return scores.some(score => score.teamName === teamName);
     },
 
-    // 添加重置所有游戏数据的方法
-    async resetAllGames() {
-        // 清除所有游戏进度和分数
-        this.storage.scores = [];
+    // 添加重置所有数据的方法
+    async resetAllData() {
+        // 重置存储数据
+        this.storage = {
+            questions: [],
+            users: [],
+            scores: []
+        };
         this.save();
 
-        // 清除所有玩家的进度
+        // 清除所有游戏进度
         const keys = Object.keys(localStorage);
         keys.forEach(key => {
             if (key.startsWith('game-progress-')) {
@@ -183,45 +210,121 @@ const API = {
             }
         });
 
+        // 保留管理员凭据和游戏设置
+        const adminCredentials = localStorage.getItem('admin-credentials');
+        const gameSettings = localStorage.getItem('game-settings');
+        
+        // 清除其他所有数据
+        localStorage.clear();
+        
+        // 恢复管理员凭据和游戏设置
+        if (adminCredentials) {
+            localStorage.setItem('admin-credentials', adminCredentials);
+        }
+        if (gameSettings) {
+            localStorage.setItem('game-settings', gameSettings);
+        }
+        localStorage.setItem('isAdmin', 'true');
+
         return true;
     },
 
-    // 修改文件上传方法
-    async uploadFile(file, teamName, questionId) {
-        return new Promise((resolve) => {
-            // 使用 FileReader 读取文件
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                // 创建一个简单的文件URL
-                const fileData = {
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    data: e.target.result,
-                    uploadTime: new Date().toISOString(),
-                    teamName: teamName,
-                    questionId: questionId
-                };
+    // 修改获取所有团队进度的方法
+    async getAllTeamsProgress() {
+        try {
+            const teams = [];
+            const storage = JSON.parse(localStorage.getItem('bingo-data')) || this.storage;
+            const keys = Object.keys(localStorage);
+            
+            for (const key of keys) {
+                if (key.startsWith('game-progress-')) {
+                    try {
+                        const teamName = key.replace('game-progress-', '');
+                        const progressData = localStorage.getItem(key);
+                        if (!progressData) continue;
 
-                // 存储文件信息
-                const uploads = JSON.parse(localStorage.getItem('file-uploads') || '[]');
-                uploads.push(fileData);
-                localStorage.setItem('file-uploads', JSON.stringify(uploads));
+                        const progress = JSON.parse(progressData);
+                        if (!progress || !progress.board) continue;
 
-                // 返回一个模拟的文件URL
-                resolve({
-                    fileUrl: e.target.result,
-                    fileName: file.name
-                });
-            };
-            reader.readAsDataURL(file);
-        });
+                        // 确保每个格子的数据完整
+                        progress.board = progress.board.map(cell => ({
+                            ...cell,
+                            preview: cell.preview || null,
+                            fileType: cell.fileType || null,
+                            completed: cell.completed || false,
+                            flipped: cell.flipped || false
+                        }));
+
+                        const isCompleted = await this.checkGameCompletion(teamName);
+                        const score = storage.scores.find(s => s.teamName === teamName)?.score;
+                        const user = storage.users.find(u => u.teamName === teamName);
+
+                        teams.push({
+                            teamName,
+                            progress,
+                            timestamp: progress.lastSaveTime,
+                            isCompleted,
+                            score,
+                            leaderName: user?.leaderName
+                        });
+                    } catch (err) {
+                        console.error(`处理团队 ${key} 数据失败:`, err);
+                        continue;
+                    }
+                }
+            }
+
+            console.log('获取到的所有团队数据:', teams); // 调试日志
+            return teams;
+        } catch (error) {
+            console.error('获取团队进度失败:', error);
+            throw error;
+        }
     },
 
-    // 获取上传的文件
-    async getUploads(questionId) {
-        const uploads = JSON.parse(localStorage.getItem('file-uploads') || '[]');
-        return uploads.filter(upload => upload.questionId === questionId);
+    // 添��删除团队分数的方法
+    async deleteTeamScore(teamName) {
+        this.storage.scores = this.storage.scores.filter(score => score.teamName !== teamName);
+        this.save();
+        return true;
+    },
+
+    // 添加提交缓存相关的方法
+    submissionCache: new Map(),
+
+    // 保存提交到缓存
+    async cacheSubmission(teamName, cellIndex, submission) {
+        try {
+            const cacheKey = `submission-cache-${teamName}`;
+            let teamCache = this.submissionCache.get(teamName) || [];
+            
+            teamCache.push({
+                cellIndex,
+                question: submission.question,
+                preview: submission.preview,
+                fileType: submission.fileType,
+                timestamp: new Date().toISOString(),
+                completed: true
+            });
+
+            this.submissionCache.set(teamName, teamCache);
+            
+            // 触发更新通知
+            localStorage.setItem('needsUpdate', 'true');
+            console.log('已缓存新的提交:', {teamName, cellIndex, submission});
+            
+            return true;
+        } catch (error) {
+            console.error('缓存提交失败:', error);
+            return false;
+        }
+    },
+
+    // 获取并清除缓存的提交
+    async getAndClearCache(teamName) {
+        const submissions = this.submissionCache.get(teamName) || [];
+        this.submissionCache.delete(teamName);
+        return submissions;
     }
 };
 

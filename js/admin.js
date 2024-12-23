@@ -6,61 +6,92 @@ class AdminPanel {
         this.addQuestionForm = document.getElementById('addQuestionForm');
         this.questionsList = document.getElementById('questionsList');
         this.adminSettingsForm = document.getElementById('adminSettingsForm');
-        this.driveSettingsForm = document.getElementById('driveSettingsForm');
         this.gameSettingsForm = document.getElementById('gameSettingsForm');
+        
+        // 添加批量删除相关的元素引用
+        this.selectAllCheckbox = document.getElementById('selectAllQuestions');
+        this.batchDeleteBtn = document.getElementById('batchDeleteBtn');
         
         this.init();
         this.initPanels();
         
         // 添加排行榜刷新定时器
         this.startLeaderboardRefresh();
+
+        // 添加历史记录监听
+        this.setupHistoryListener();
+
+        // 添加实时更新监听
+        this.addQuestionForm.addEventListener('submit', (e) => {
+            this.handleAddQuestion(e).then(() => this.updateGridSizeOptions());
+        });
+
+        // 绑定批量删除相关事件
+        this.selectAllCheckbox?.addEventListener('change', () => this.handleSelectAll());
+        this.batchDeleteBtn?.addEventListener('click', () => this.handleBatchDelete());
     }
 
     init() {
-        // 检查是否已登录
-        const isAdmin = localStorage.getItem('isAdmin');
-        if (isAdmin === 'true') {
+        // 修改登录检查逻辑
+        const isAdmin = sessionStorage.getItem('isAdmin');
+        const lastActivity = sessionStorage.getItem('adminLastActivity');
+        const currentTime = Date.now();
+        const SESSION_TIMEOUT = 30 * 60 * 1000; // 30分钟超时
+
+        // 检查是否登录以及会话是否过期
+        if (isAdmin === 'true' && lastActivity && (currentTime - parseInt(lastActivity)) < SESSION_TIMEOUT) {
             this.showAdminPanel();
+            // 更新最后活动时间
+            sessionStorage.setItem('adminLastActivity', currentTime.toString());
+        } else {
+            // 清除所有管理员相关的状态
+            this.clearAdminSession();
+            this.showLoginForm();
         }
 
         // 绑定事件
         this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         this.addQuestionForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
         this.adminSettingsForm.addEventListener('submit', (e) => this.handleUpdateAdmin(e));
-        this.driveSettingsForm.addEventListener('submit', (e) => this.handleUpdateDrive(e));
         this.gameSettingsForm.addEventListener('submit', (e) => this.handleUpdateGameSettings(e));
         
         // 加载题目列表
         this.loadQuestions();
-        this.loadDriveSettings();
         this.loadGameSettings();
         
-        // 初始加载排行榜
+        // 初始载排行榜
         this.refreshLeaderboard();
     }
 
     initPanels() {
-        // 初始时隐藏所有面板
+        // 只隐藏管理员设置面板
         document.getElementById('adminSettings-panel').classList.add('hidden');
-        document.getElementById('driveSettings-panel').classList.add('hidden');
-
-        // 如果有保存的 Drive 设置，显示掩码
-        this.updateDriveSettingsDisplay();
     }
 
-    async updateDriveSettingsDisplay() {
-        const settings = await API.getDriveSettings();
-        const savedDisplay = document.getElementById('savedDriveSettings');
-        if (settings && (settings.folderId || settings.apiKey)) {
-            savedDisplay.innerHTML = `
-                <p class="text-sm text-gray-600">
-                    Folder ID: <span class="text-gray-900">****${settings.folderId.slice(-4)}</span><br>
-                    API Key: <span class="text-gray-900">****${settings.apiKey.slice(-4)}</span>
-                </p>
-            `;
-        } else {
-            savedDisplay.innerHTML = '<p class="text-sm text-gray-600">未设置</p>';
-        }
+    setupHistoryListener() {
+        // 监听浏览器的后退事件
+        window.addEventListener('popstate', () => {
+            this.clearAdminSession();
+            window.location.href = '../index.html';
+        });
+
+        // 监听页面可见性变化
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.clearAdminSession();
+            }
+        });
+    }
+
+    clearAdminSession() {
+        sessionStorage.removeItem('isAdmin');
+        sessionStorage.removeItem('adminLastActivity');
+        localStorage.removeItem('isAdmin');
+    }
+
+    showLoginForm() {
+        this.loginSection.classList.remove('hidden');
+        this.adminPanel.classList.add('hidden');
     }
 
     async handleLogin(e) {
@@ -70,7 +101,8 @@ class AdminPanel {
 
         try {
             await API.adminLogin(username, password);
-            localStorage.setItem('isAdmin', 'true');
+            sessionStorage.setItem('isAdmin', 'true');
+            sessionStorage.setItem('adminLastActivity', Date.now().toString());
             this.showAdminPanel();
         } catch (error) {
             alert('登录失败，请检查用户名和密码');
@@ -81,6 +113,9 @@ class AdminPanel {
         this.loginSection.classList.add('hidden');
         this.adminPanel.classList.remove('hidden');
         this.loadQuestions();
+        
+        // 添加这行，防止后退到登录页面
+        history.pushState(null, '', window.location.href);
     }
 
     async loadQuestions() {
@@ -110,8 +145,13 @@ class AdminPanel {
 
     renderQuestions(questions) {
         this.questionsList.innerHTML = questions.map(q => `
-            <div class="flex justify-between items-center border-b pb-2">
-                <span>${q.question}</span>
+            <div class="flex items-center justify-between border-b pb-2">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" 
+                        class="question-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        data-question-id="${q.id}">
+                    <span>${q.question}</span>
+                </div>
                 <button
                     onclick="adminPanel.handleDeleteQuestion(${q.id})"
                     class="text-red-600 hover:text-red-700"
@@ -120,6 +160,17 @@ class AdminPanel {
                 </button>
             </div>
         `).join('');
+
+        // 添加复选框变化事件监听
+        this.questionsList.querySelectorAll('.question-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.updateBatchDeleteButton());
+        });
+
+        // 重置全选复选框和批量删除按钮状态
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.checked = false;
+        }
+        this.updateBatchDeleteButton();
     }
 
     async handleDeleteQuestion(id) {
@@ -127,7 +178,8 @@ class AdminPanel {
 
         try {
             await API.deleteQuestion(id);
-            this.loadQuestions();
+            await this.loadQuestions();
+            await this.updateGridSizeOptions(); // 删除后更新选项
         } catch (error) {
             alert('删除题目失败，请重试');
         }
@@ -151,55 +203,30 @@ class AdminPanel {
 
         try {
             await API.updateAdminCredentials(newUsername, newPassword);
-            alert('管理员信息更新成功，请使用新的用户名和密码重新登录');
+            alert('管理员信息更新成功，请使用新的用户名和密码新登录');
             handleLogout();
         } catch (error) {
             alert('更新管理员信息失败');
         }
     }
 
-    async handleUpdateDrive(e) {
-        e.preventDefault();
-        const folderId = document.getElementById('driveFolderId').value.trim();
-        const apiKey = document.getElementById('driveApiKey').value.trim();
-
-        if (!folderId || !apiKey) {
-            alert('请填写完整的 Google Drive 设置信息');
-            return;
-        }
-
-        try {
-            await API.updateDriveSettings(folderId, apiKey);
-            alert('Google Drive 设置更新成功');
-            // 清空输入框
-            document.getElementById('driveFolderId').value = '';
-            document.getElementById('driveApiKey').value = '';
-            // 更新显示
-            this.updateDriveSettingsDisplay();
-            // 关闭面板
-            togglePanel('driveSettings');
-        } catch (error) {
-            alert('更新 Google Drive 设置失败');
-        }
-    }
-
-    async loadDriveSettings() {
-        try {
-            const settings = await API.getDriveSettings();
-            if (settings) {
-                document.getElementById('driveFolderId').value = settings.folderId || '';
-                document.getElementById('driveApiKey').value = settings.apiKey || '';
-            }
-        } catch (error) {
-            console.error('Failed to load drive settings:', error);
-        }
-    }
-
     async handleUpdateGameSettings(e) {
         e.preventDefault();
         const gridSize = document.getElementById('gridSize').value;
+        const requiredQuestions = gridSize * gridSize;
 
         try {
+            // 先检查题目数量是否足够
+            const questions = await API.getQuestions();
+            const uniqueQuestions = Array.from(new Set(questions.map(q => q.question)));
+            
+            if (uniqueQuestions.length < requiredQuestions) {
+                alert(`题目数量不足！当前有 ${uniqueQuestions.length} 个不重复题目，` +
+                      `${gridSize}x${gridSize} 的格子需要 ${requiredQuestions} 个不重复题目。\n\n` +
+                      `请先添加更多题目，或减小格子大小。`);
+                return;
+            }
+
             await API.updateGameSettings(gridSize);
             alert('游戏设置更新成功');
         } catch (error) {
@@ -210,9 +237,14 @@ class AdminPanel {
     async loadGameSettings() {
         try {
             const settings = await API.getGameSettings();
-            if (settings) {
-                document.getElementById('gridSize').value = settings.gridSize.toString();
-            }
+            let gridSize = settings ? settings.gridSize : 5;
+            
+            // 更新选择器值
+            const gridSizeSelector = document.getElementById('gridSize');
+            gridSizeSelector.value = gridSize.toString();
+
+            // 更新选项可用性
+            await this.updateGridSizeOptions();
         } catch (error) {
             console.error('Failed to load game settings:', error);
         }
@@ -220,7 +252,7 @@ class AdminPanel {
 
     // 开始定时刷新排行榜
     startLeaderboardRefresh() {
-        // 每30秒刷新一次排行榜
+        // 每30秒��新一次排行榜
         this.leaderboardInterval = setInterval(() => {
             this.refreshLeaderboard();
         }, 30000);
@@ -236,7 +268,7 @@ class AdminPanel {
         }
     }
 
-    // 渲染排行榜
+    // 修改渲染排行榜的方法
     renderLeaderboard(leaderboard) {
         const leaderboardElement = document.getElementById('adminLeaderboard');
         if (!leaderboardElement) return;
@@ -280,64 +312,131 @@ class AdminPanel {
         }
     }
 
-    async handleResetAllGames() {
-        if (!confirm('确定要重置所有游戏数据吗？这将清除所有玩家的进度和排行榜数据。')) {
-            return;
-        }
+    async handleReset() {
+        const confirmed = confirm(
+            '警告：这清除所有数据，包括：\n' +
+            '- 所有游戏进度\n' +
+            '- 所有排行榜记录\n' +
+            '- 所有题目\n\n' +
+            '此操作不可撤销！是否确定继续？'
+        );
+
+        if (!confirmed) return;
+
+        const doubleConfirmed = confirm(
+            '最后确认：\n' +
+            '您确定要重置所有数据吗？'
+        );
+
+        if (!doubleConfirmed) return;
 
         try {
-            await API.resetAllGames();
-            alert('所有游戏数据已重置');
-            // 刷新排行榜显示
-            this.refreshLeaderboard();
+            await API.resetAllData();
+            alert('所有数据已重置');
+            window.location.reload(); // 刷新页面以显示重置后的状态
         } catch (error) {
-            console.error('Failed to reset games:', error);
-            alert('重置游戏数据失败');
+            console.error('Failed to reset data:', error);
+            alert('重置失败，请重试');
         }
     }
 
-    async viewUploads(questionId) {
+    // 添加新方法：更新格子大小选项
+    async updateGridSizeOptions() {
         try {
-            const response = await fetch(`${API.baseUrl}/uploads/${questionId}`);
-            const uploads = await response.json();
+            const questions = await API.getQuestions();
+            const uniqueQuestions = Array.from(new Set(questions.map(q => q.question))).length;
+            const maxPossibleSize = Math.floor(Math.sqrt(uniqueQuestions));
             
-            // 显示上传列表
-            const uploadsHtml = uploads.map(upload => `
-                <div class="border-b py-2">
-                    <div class="flex justify-between items-center">
-                        <span>${upload.teamName}</span>
-                        <a href="${upload.fileUrl}" target="_blank" 
-                           class="text-indigo-600 hover:text-indigo-500">
-                            查看文件
-                        </a>
-                    </div>
-                </div>
-            `).join('');
+            const gridSizeSelector = document.getElementById('gridSize');
+            
+            // 更新选项可用性
+            Array.from(gridSizeSelector.options).forEach(option => {
+                const size = parseInt(option.value);
+                option.disabled = size * size > uniqueQuestions;
+                if (option.disabled) {
+                    option.textContent = `${size} x ${size} (需要 ${size * size} 个题目)`;
+                } else {
+                    option.textContent = `${size} x ${size}`;
+                }
+            });
 
-            // 显示在模态框中
-            // ... 显示模态框的代码
+            // 更新提示信息
+            const infoText = document.createElement('p');
+            infoText.className = 'mt-2 text-sm text-gray-500';
+            infoText.textContent = `当前有 ${uniqueQuestions} 个不重复题目，可支持最大 ${maxPossibleSize}x${maxPossibleSize} 的格子`;
+            
+            const existingInfo = gridSizeSelector.parentElement.querySelector('p:last-child');
+            if (existingInfo) {
+                existingInfo.replaceWith(infoText);
+            } else {
+                gridSizeSelector.parentElement.appendChild(infoText);
+            }
         } catch (error) {
-            console.error('Failed to load uploads:', error);
-            alert('获取上传文件列表失败');
+            console.error('Failed to update grid size options:', error);
+        }
+    }
+
+    // 处理全选
+    handleSelectAll() {
+        const isChecked = this.selectAllCheckbox.checked;
+        this.questionsList.querySelectorAll('.question-checkbox').forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        this.updateBatchDeleteButton();
+    }
+
+    // 更新批量删除按钮状态
+    updateBatchDeleteButton() {
+        const checkedCount = this.questionsList.querySelectorAll('.question-checkbox:checked').length;
+        this.batchDeleteBtn.disabled = checkedCount === 0;
+    }
+
+    // 处理批量删除
+    async handleBatchDelete() {
+        const checkedBoxes = this.questionsList.querySelectorAll('.question-checkbox:checked');
+        if (checkedBoxes.length === 0) return;
+
+        const confirmMessage = checkedBoxes.length === 1 
+            ? '确定要删除选中的题目吗？' 
+            : `确定要删除选中的 ${checkedBoxes.length} 个题目吗？`;
+
+        if (!confirm(confirmMessage)) return;
+
+        try {
+            const questionIds = Array.from(checkedBoxes).map(cb => 
+                parseInt(cb.getAttribute('data-question-id'))
+            );
+
+            // 逐个删除选中的题目
+            for (const id of questionIds) {
+                await API.deleteQuestion(id);
+            }
+
+            await this.loadQuestions();
+            await this.updateGridSizeOptions();
+            alert('选中的题目已删除');
+        } catch (error) {
+            console.error('批量删除失败:', error);
+            alert('删除失败，请重试');
         }
     }
 }
 
-// 修改现有的 handleLogout 函数
+// 修改登出函数
 function handleLogout() {
     if (confirm('确定要退出登录吗？')) {
         // 清理定时器
         if (window.adminPanel) {
             window.adminPanel.cleanup();
         }
-        localStorage.removeItem('isAdmin');
-        window.location.reload();
+        // 清除所有管理员相关的状态
+        window.adminPanel.clearAdminSession();
+        window.location.href = '../index.html';
     }
 }
 
 // 初始化管理员面板
-const adminPanel = new AdminPanel();
-window.adminPanel = adminPanel; // 保存到全局以便访问
+window.adminPanel = new AdminPanel();
 
 // 添加全局折叠面板控制函数
 function togglePanel(panelId) {

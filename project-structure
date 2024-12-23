@@ -1,24 +1,13 @@
 bingo-game/
-├── client/                 # 前端代码 (部署到 GitHub Pages)
-│   ├── index.html
-│   ├── css/
-│   │   └── style.css
-│   ├── js/
-│   │   ├── app.js
-│   │   ├── game.js
-│   │   ├── admin.js
-│   │   └── api.js
-│   └── pages/
-│       ├── game.html
-│       ├── admin.html
-│       └── leaderboard.html
-│
-└── server/                # 后端代码 (部署到其他服务器)
-    ├── package.json
-    ├── .env
-    └── src/
-        ├── index.js
-        ├── routes/
-        │   └── upload.js
-        └── services/
-            └── drive.js
+├── index.html              # 主页面
+├── css/                    # 样式文件
+│   └── style.css          # 主样式文件
+├── js/                    # JavaScript 文件
+│   ├── app.js            # 主应用逻辑
+│   ├── game.js           # 游戏逻辑
+│   ├── admin.js          # 管理员功能
+│   └── api.js            # API 处理
+└── pages/                 # HTML 页面
+    ├── game.html         # 游戏页面
+    ├── admin.html        # 管理员页面
+    └── leaderboard.html  # 排行榜页面
