@@ -91,7 +91,37 @@
         }
 
         // 页面加载时执行
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 获取返回按钮
+            const backButton = document.querySelector('a[href="game.html"]');
+            if (backButton) {
+                backButton.addEventListener('click', async (e) => {
+                    e.preventDefault(); // 阻止默认跳转
+                    
+                    // 获取当前用户
+                    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                    if (!currentUser) {
+                        window.location.href = '../index.html';
+                        return;
+                    }
+
+                    // 检查是否已完成游戏
+                    try {
+                        const isCompleted = await API.checkGameCompletion(currentUser.teamName);
+                        if (isCompleted) {
+                            // 如果已完成，设置一个标记并跳转
+                            localStorage.setItem('viewCompleted', 'true');
+                        }
+                        // 无论是否完成都跳转到游戏页面
+                        window.location.href = 'game.html';
+                    } catch (error) {
+                        console.error('检查游戏状态失败:', error);
+                        window.location.href = 'game.html';
+                    }
+                });
+            }
+
+            // 加载排行榜和显示完成消息
             loadLeaderboard();
             showCompletionMessage();
         });

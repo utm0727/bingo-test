@@ -127,36 +127,75 @@ const API = {
         return settings ? JSON.parse(settings) : { gridSize: 5 }; // 默认 5x5
     },
 
-    // 保存游戏进度
+    // 修改数据压缩方法
+    compressData(data) {
+        try {
+            // 移除不必要的数据
+            const compressedBoard = data.board.map(cell => ({
+                id: cell.id,
+                question: cell.question,
+                completed: cell.completed,
+                flipped: cell.flipped,
+                fileType: cell.fileType,
+                // 保存所有类型的预览内容
+                preview: cell.preview,
+                timestamp: cell.timestamp
+            }));
+
+            return {
+                ...data,
+                board: compressedBoard
+            };
+        } catch (error) {
+            console.error('压缩数据失败:', error);
+            return data;
+        }
+    },
+
+    // 修改 saveGameProgress 方法
     async saveGameProgress(teamName, progress) {
         try {
-            console.log('API: 开始保存游戏进度', {
-                teamName: teamName,
-                progress: progress
-            });
-
-            const gameProgress = {
-                teamName,
-                board: progress.board,
-                startTime: progress.startTime,
-                lastSaveTime: Date.now(),
-                totalPlayTime: progress.totalPlayTime || 0,
-                isActive: true
-            };
-
-            // 保存到 localStorage
-            const key = `game-progress-${teamName}`;
-            localStorage.setItem(key, JSON.stringify(gameProgress));
+            // 压缩数据
+            const compressedProgress = this.compressData(progress);
             
-            // 设置更新标记
-            localStorage.setItem('needsUpdate', 'true');
-            
-            // 触发自定义事件
-            const event = new CustomEvent('gameProgressUpdate', {
-                detail: { teamName, timestamp: Date.now() }
-            });
-            window.dispatchEvent(event);
+            try {
+                // 尝试直接保存
+                localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    console.log('存储空间不足，尝试清理...');
+                    
+                    // 清理旧数据
+                    const keys = Object.keys(localStorage);
+                    for (const key of keys) {
+                        // 清理超过24小时的游戏进度
+                        if (key.startsWith('game-progress-')) {
+                            try {
+                                const savedData = JSON.parse(localStorage.getItem(key));
+                                const timestamp = new Date(savedData.lastSaveTime).getTime();
+                                if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
+                                    localStorage.removeItem(key);
+                                }
+                            } catch (err) {
+                                // 如果数据解析失败，直接删除
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    }
 
+                    // 再次尝试保存
+                    try {
+                        localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
+                    } catch (finalError) {
+                        // 如果还是失败，清理当前团队的进度并保存
+                        localStorage.removeItem(`game-progress-${teamName}`);
+                        localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
+                    }
+                } else {
+                    throw e;
+                }
+            }
+            
             return true;
         } catch (error) {
             console.error('API: 保存游戏进度失败:', error);
@@ -169,11 +208,25 @@ const API = {
         try {
             const key = `game-progress-${teamName}`;
             const progressData = localStorage.getItem(key);
-            console.log('API: 获取游戏进度', {
-                teamName: teamName,
-                data: progressData ? JSON.parse(progressData) : null
-            });
-            return progressData ? JSON.parse(progressData) : null;
+            
+            if (progressData) {
+                const progress = JSON.parse(progressData);
+                
+                // 如果有完成时间戳，检查是否超过24小时
+                if (progress.completedAt) {
+                    const now = Date.now();
+                    const hoursSinceCompletion = (now - progress.completedAt) / (1000 * 60 * 60);
+                    
+                    if (hoursSinceCompletion >= 24) {
+                        // 如果超过24小时，删除进度
+                        localStorage.removeItem(key);
+                        return null;
+                    }
+                }
+                
+                return progress;
+            }
+            return null;
         } catch (error) {
             console.error('API: 获取游戏进度失败:', error);
             return null;
@@ -182,7 +235,12 @@ const API = {
 
     // 清除游戏进度
     async clearGameProgress(teamName) {
-        localStorage.removeItem(`game-progress-${teamName}`);
+        // 不立即删除，而是标记删除时间
+        const progress = await this.getGameProgress(teamName);
+        if (progress) {
+            progress.completedAt = Date.now(); // 添加完成时间戳
+            localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(progress));
+        }
         return true;
     },
 
@@ -229,67 +287,7 @@ const API = {
         return true;
     },
 
-    // 修改获取所有团队进度的方法
-    async getAllTeamsProgress() {
-        try {
-            const teams = [];
-            const storage = JSON.parse(localStorage.getItem('bingo-data')) || this.storage;
-            const keys = Object.keys(localStorage);
-            
-            for (const key of keys) {
-                if (key.startsWith('game-progress-')) {
-                    try {
-                        const teamName = key.replace('game-progress-', '');
-                        const progressData = localStorage.getItem(key);
-                        if (!progressData) continue;
-
-                        const progress = JSON.parse(progressData);
-                        if (!progress || !progress.board) continue;
-
-                        // 确保每个格子的数据完整
-                        progress.board = progress.board.map(cell => ({
-                            ...cell,
-                            preview: cell.preview || null,
-                            fileType: cell.fileType || null,
-                            completed: cell.completed || false,
-                            flipped: cell.flipped || false
-                        }));
-
-                        const isCompleted = await this.checkGameCompletion(teamName);
-                        const score = storage.scores.find(s => s.teamName === teamName)?.score;
-                        const user = storage.users.find(u => u.teamName === teamName);
-
-                        teams.push({
-                            teamName,
-                            progress,
-                            timestamp: progress.lastSaveTime,
-                            isCompleted,
-                            score,
-                            leaderName: user?.leaderName
-                        });
-                    } catch (err) {
-                        console.error(`处理团队 ${key} 数据失败:`, err);
-                        continue;
-                    }
-                }
-            }
-
-            console.log('获取到的所有团队数据:', teams); // 调试日志
-            return teams;
-        } catch (error) {
-            console.error('获取团队进度失败:', error);
-            throw error;
-        }
-    },
-
-    // 添��删除团队分数的方法
-    async deleteTeamScore(teamName) {
-        this.storage.scores = this.storage.scores.filter(score => score.teamName !== teamName);
-        this.save();
-        return true;
-    },
-
-    // 添加提交缓存相关的方法
+    // 添加缓存相关的方法
     submissionCache: new Map(),
 
     // 保存提交到缓存
@@ -309,9 +307,8 @@ const API = {
 
             this.submissionCache.set(teamName, teamCache);
             
-            // 触发更新通知
+            // 设置更新标记
             localStorage.setItem('needsUpdate', 'true');
-            console.log('已缓存新的提交:', {teamName, cellIndex, submission});
             
             return true;
         } catch (error) {

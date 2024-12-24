@@ -7,6 +7,7 @@ class BingoGame {
         this.lastSaveTime = Date.now();
         this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
         this.currentFlippedIndex = null;
+        this.isBingo = false;
         this.initGame();
         this.setupAutoSave();
     }
@@ -18,6 +19,12 @@ class BingoGame {
                 return;
             }
 
+            // 首先检查是否已经完成 Bingo
+            const isCompleted = await API.checkGameCompletion(this.currentUser.teamName);
+            if (isCompleted) {
+                this.isBingo = true; // 设置 Bingo 状态为 true
+            }
+
             // 获取游戏设置
             const settings = await API.getGameSettings();
             this.size = settings.gridSize;
@@ -26,6 +33,10 @@ class BingoGame {
             const savedProgress = await API.getGameProgress(this.currentUser.teamName);
             if (savedProgress) {
                 this.board = savedProgress.board;
+                this.startTime = savedProgress.startTime;
+                this.totalPlayTime = savedProgress.totalPlayTime || 0;
+                this.lastSaveTime = savedProgress.lastSaveTime;
+                
                 // 确保棋盘大小正确
                 if (this.board.length < this.size * this.size) {
                     // 补充空格子
@@ -43,28 +54,67 @@ class BingoGame {
                     this.board = this.board.slice(0, this.size * this.size);
                 }
 
-                this.startTime = savedProgress.startTime;
-                this.totalPlayTime = savedProgress.totalPlayTime || 0;
-                this.lastSaveTime = savedProgress.lastSaveTime;
+                // 如果已经完成 Bingo，显示所有格子
+                if (this.isBingo) {
+                    this.board = this.board.map(cell => ({
+                        ...cell,
+                        flipped: true // 显示所有格子的内容
+                    }));
+                    this.renderBoard();
+                    return;
+                }
                 
-                // 恢复当前翻转的格子状态
-                this.currentFlippedIndex = null;
-                for (let i = 0; i < this.board.length; i++) {
-                    if (this.board[i].flipped && !this.board[i].completed) {
-                        this.currentFlippedIndex = i;
-                        break;
+                // 确保棋盘大小正确
+                if (this.board.length < this.size * this.size) {
+                    // 补充空格子
+                    while (this.board.length < this.size * this.size) {
+                        this.board.push({
+                            id: Date.now() + Math.random(),
+                            question: '待添加题目',
+                            completed: false,
+                            flipped: false,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } else if (this.board.length > this.size * this.size) {
+                    // 裁剪多余的格子
+                    this.board = this.board.slice(0, this.size * this.size);
+                }
+
+                // 如果已经完成 Bingo，不恢复翻转状态
+                if (!this.isBingo) {
+                    this.currentFlippedIndex = null;
+                    for (let i = 0; i < this.board.length; i++) {
+                        if (this.board[i].flipped && !this.board[i].completed) {
+                            this.currentFlippedIndex = i;
+                            break;
+                        }
                     }
                 }
                 
                 // 计算离线时间并添加到总时间
-                if (savedProgress.lastSaveTime) {
+                if (savedProgress.lastSaveTime && !this.isBingo) {
                     const offlineTime = Date.now() - savedProgress.lastSaveTime;
                     this.totalPlayTime += offlineTime;
                 }
                 
                 this.renderBoard();
-                this.updateTimeDisplay();
+                if (!this.isBingo) {
+                    this.updateTimeDisplay();
+                }
             } else {
+                // 如果已经完成 Bingo 但没有保存的进度（可能已经过期）
+                if (this.isBingo) {
+                    // 获取所有题目并创建新棋盘
+                    const questions = await API.getQuestions();
+                    this.board = this.shuffleQuestions(questions).map(cell => ({
+                        ...cell,
+                        flipped: true // 显示所有格子的内容
+                    }));
+                    this.renderBoard();
+                    return;
+                }
+                
                 // 初始化新游戏
                 const questions = await API.getQuestions();
                 if (questions.length < this.size * this.size) {
@@ -77,10 +127,12 @@ class BingoGame {
                 this.saveProgress();
             }
 
-            // 启动时间更新
-            this.startTimeUpdate();
+            // 只在未完成 Bingo 时启动时间更新
+            if (!this.isBingo) {
+                this.startTimeUpdate();
+            }
         } catch (error) {
-            console.error('Failed to initialize game:', error);
+            console.error('初始化游戏失败:', error);
             alert('初始化游戏失败，请重试');
         }
     }
@@ -169,7 +221,7 @@ class BingoGame {
 
         // 深拷贝题目数组并打乱顺序
         const shuffled = [...questions]
-            .map(q => ({ ...q }))  // 深拷贝每个题目��象
+            .map(q => ({ ...q }))  // 深拷贝每个题目对象
             .sort(() => Math.random() - 0.5);
 
         // 创建一个Set来跟踪已选择的题目
@@ -205,121 +257,168 @@ class BingoGame {
     renderBoard() {
         const gameBoard = document.getElementById('gameBoard');
         gameBoard.innerHTML = '';
-        
-        // 动态设置列数
-        gameBoard.style.gridTemplateColumns = `repeat(${this.size}, minmax(0, 1fr))`;
-        
-        // 确保 board 数组长度正确
-        if (this.board.length < this.size * this.size) {
-            console.error('棋盘数据不完整，需要补充空格子');
-            // 补充空格子直到达到所需数量
-            while (this.board.length < this.size * this.size) {
-                this.board.push({
-                    question: '待添加题目',
-                    completed: false,
-                    flipped: false,
-                    id: Date.now() + Math.random(),
-                    timestamp: new Date().toISOString()
-                });
+        gameBoard.className = `grid grid-cols-${this.size} gap-4`;
+
+        // 添加顶部导航栏
+        const navBar = document.querySelector('.mb-6.flex');
+        if (navBar) {
+            // 检查是否已经存在返回按钮
+            if (!navBar.querySelector('.home-button')) {
+                const homeButton = document.createElement('a');
+                homeButton.href = '../index.html';
+                homeButton.className = 'home-button text-indigo-600 hover:text-indigo-500 ml-4';
+                homeButton.textContent = '返回首页';
+                
+                // 将返回按钮添加到导航栏的右侧
+                const rightSection = navBar.querySelector('div.flex');
+                if (rightSection) {
+                    rightSection.insertBefore(homeButton, rightSection.firstChild);
+                }
             }
-        } else if (this.board.length > this.size * this.size) {
-            console.error('棋盘数据过多，需要裁剪');
-            // 裁剪多余的格子
-            this.board = this.board.slice(0, this.size * this.size);
         }
 
         this.board.forEach((cell, index) => {
             const cellElement = document.createElement('div');
-            cellElement.className = `bingo-cell ${cell.completed ? 'completed' : ''}`;
-
-            // 创建正面
-            const frontSide = document.createElement('div');
-            frontSide.className = 'cell-front';
-            frontSide.innerHTML = `
-                <span class="text-gray-400 text-center">
-                    ${cell.completed ? '已完成' : '点击翻转'}
-                </span>
-            `;
-
-            // 创建背面
-            const backSide = document.createElement('div');
-            backSide.className = 'cell-back';
-
-            if (cell.completed) {
-                console.log(`渲染第 ${index} 个格子:`, {
-                    question: cell.question,
-                    preview: cell.preview ? cell.preview.slice(0, 50) + '...' : 'no preview',
-                    fileType: cell.fileType,
-                    completed: cell.completed
-                });
-
-                backSide.innerHTML = `
-                    <div class="question-content h-full flex flex-col">
-                        <p class="text-sm mb-2 text-center font-medium">${cell.question}</p>
-                        <div class="preview-container flex-grow flex items-center justify-center">
-                            ${cell.preview ? this.renderPreview(cell, index) : '<span class="text-gray-500">已完成</span>'}
+            cellElement.className = `bingo-cell ${cell.completed ? 'completed' : ''} ${cell.flipped ? 'flipped' : ''}`;
+            
+            // 创建格子的内容
+            if (cell.completed && !this.isBingo) {
+                // 已完成但未 Bingo，允许修改
+                cellElement.innerHTML = `
+                    <div class="cell-front">
+                        <span class="text-green-600">✓</span>
+                    </div>
+                    <div class="cell-back">
+                        <div class="question-content">
+                            <p class="text-sm mb-2">${cell.question}</p>
+                            ${this.renderPreview(cell, index)}
+                            <div class="mt-2 border-t pt-2">
+                                <p class="text-xs text-gray-500 mb-2">重新提交：</p>
+                                <div class="flex flex-col gap-2">
+                                    <textarea class="w-full p-2 border rounded text-sm input-field" 
+                                        placeholder="输入新的文字答案..."
+                                        onclick="event.stopPropagation()"></textarea>
+                                    <input type="file" class="file-input" 
+                                        data-cell-index="${index}"
+                                        accept="image/*,video/*"
+                                        onclick="event.stopPropagation()">
+                                    <button class="submit-text bg-blue-500 text-white px-2 py-1 rounded text-sm"
+                                        onclick="event.stopPropagation()">
+                                        重新提交
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
-            } else {
-                backSide.innerHTML = `
-                    <div class="question-content h-full flex flex-col">
-                        <p class="text-sm mb-4 flex-grow text-center font-medium">${cell.question}</p>
-                        <div class="mt-auto space-y-2">
+
+                // 绑定文件上传事件
+                const fileInput = cellElement.querySelector('.file-input');
+                if (fileInput) {
+                    fileInput.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        // 使用 data-cell-index 来获取正确的索引
+                        const cellIndex = parseInt(e.target.getAttribute('data-cell-index'));
+                        this.currentFlippedIndex = cellIndex; // 设置当前翻转的格子索引
+                        this.handleFileUpload(e, cell.id);
+                    });
+                }
+
+                // 绑定文字提交事件
+                const submitButton = cellElement.querySelector('.submit-text');
+                const textarea = cellElement.querySelector('textarea');
+                if (submitButton && textarea) {
+                    submitButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleTextInput(index, textarea);
+                    });
+                    
+                    textarea.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+            } else if (cell.completed && this.isBingo) {
+                // Bingo 后的已完成格子，只显示内容不允许修改
+                cellElement.innerHTML = `
+                    <div class="cell-front">
+                        <span class="text-green-600">✓</span>
+                    </div>
+                    <div class="cell-back">
+                        <div class="question-content">
+                            <p class="text-sm mb-2">${cell.question}</p>
+                            ${this.renderPreview(cell, index)}
+                        </div>
+                    </div>
+                `;
+            } else if (cell.flipped && !this.isBingo) {
+                // 未完成的翻转格子，显示输入界面
+                cellElement.innerHTML = `
+                    <div class="cell-front"></div>
+                    <div class="cell-back">
+                        <div class="question-content">
+                            <p class="text-sm mb-2">${cell.question}</p>
                             <div class="flex flex-col gap-2">
-                                <textarea 
-                                    class="w-full p-2 text-sm border rounded resize-none" 
-                                    rows="2"
-                                    placeholder="输入文字内容..."
-                                    id="textInput-${index}"
-                                    onclick="event.stopPropagation()"
-                                ></textarea>
-                                <button 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                                    onclick="event.stopPropagation(); game.handleTextInput(${index}, document.getElementById('textInput-${index}'))"
-                                >
+                                <textarea class="w-full p-2 border rounded text-sm input-field" 
+                                    placeholder="输入文字答案..."
+                                    onclick="event.stopPropagation()"></textarea>
+                                <input type="file" class="file-input" 
+                                    accept="image/*,video/*"
+                                    onclick="event.stopPropagation()">
+                                <button class="submit-text bg-blue-500 text-white px-2 py-1 rounded text-sm"
+                                    onclick="event.stopPropagation()">
                                     提交文字
                                 </button>
-                                <p class="text-xs text-gray-500">或者</p>
                             </div>
-                            <div>
-                                <input type="file" 
-                                    class="w-full mb-2" 
-                                    onchange="game.handleFileUpload(${index}, this)"
-                                    onclick="event.stopPropagation()"
-                                    accept="image/*,video/*"
-                                >
-                                <p class="text-xs text-gray-500">支持图片和视频文件</p>
-                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 绑定文件上传事件
+                const fileInput = cellElement.querySelector('.file-input');
+                if (fileInput) {
+                    fileInput.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        this.handleFileUpload(e, cell.id);
+                    });
+                }
+
+                // 绑定文字提交事件
+                const submitButton = cellElement.querySelector('.submit-text');
+                const textarea = cellElement.querySelector('textarea');
+                if (submitButton && textarea) {
+                    submitButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleTextInput(index, textarea);
+                    });
+                    
+                    // 添加textarea的点击事件阻止冒泡
+                    textarea.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+            } else {
+                // 未翻转的格子 - 移除序号显示
+                cellElement.innerHTML = `
+                    <div class="cell-front">
+                        <span class="text-sm"></span>
+                    </div>
+                    <div class="cell-back">
+                        <div class="question-content">
+                            <p class="text-sm">${cell.question}</p>
                         </div>
                     </div>
                 `;
             }
 
-            cellElement.appendChild(frontSide);
-            cellElement.appendChild(backSide);
-
-            // 如果格子已完成或者是当前翻转的格子，保持翻转状态
-            if (cell.completed || (this.currentFlippedIndex === index && cell.flipped)) {
-                cellElement.classList.add('flipped');
-                cell.flipped = true;
-            } else if (index !== this.currentFlippedIndex) {
-                // 如果不是当前翻转的格子，确保它是未翻转状态
-                cell.flipped = false;
+            // 只在非 Bingo 状态下添加点击事件
+            if (!this.isBingo) {
+                cellElement.addEventListener('click', () => this.handleCellClick(index));
             }
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'aspect-square';
-            wrapper.appendChild(cellElement);
-
-            // 只有未完成的格子才能点击
-            if (!cell.completed) {
-                cellElement.onclick = () => this.handleCellClick(index);
-            }
-
-            gameBoard.appendChild(wrapper);
+            gameBoard.appendChild(cellElement);
         });
 
+        // 更新进度显示
         this.updateProgress();
     }
 
@@ -334,110 +433,125 @@ class BingoGame {
     }
 
     handleCellClick(index) {
-        try {
-            // 检查索引是否有效
-            if (index < 0 || index >= this.board.length) {
-                console.error('无效的格子索��:', index);
-                return;
+        // 如果已经 Bingo，阻止任何修改
+        if (this.isBingo) return;
+
+        // 如果有其他格子已经翻开，先将其关闭（除非是已完成的格子）
+        if (this.currentFlippedIndex !== null && this.currentFlippedIndex !== index) {
+            // 只关闭未完成的格子
+            if (!this.board[this.currentFlippedIndex].completed) {
+                this.board[this.currentFlippedIndex].flipped = false;
             }
-
-            // 检查当前格子
-            const currentCell = this.board[index];
-            if (!currentCell) {
-                console.error('格子数据不存在:', index);
-                return;
-            }
-
-            // 如果已经完成，不允许点击
-            if (currentCell.completed) {
-                return;
-            }
-
-            // 检查当前翻转的格子
-            if (this.currentFlippedIndex !== null) {
-                const flippedCell = this.board[this.currentFlippedIndex];
-                // 确保 flippedCell 存在且未完成时才阻止点击
-                if (flippedCell && 
-                    this.currentFlippedIndex !== index && 
-                    !flippedCell.completed) {
-                    alert('请先完成当前格子的任务');
-                    return;
-                }
-            }
-
-            // 更新格子状态
-            currentCell.flipped = !currentCell.flipped;
-            this.currentFlippedIndex = currentCell.flipped ? index : null;
-
-            // 重新渲染棋盘
-            this.renderBoard();
-            this.saveProgress();
-        } catch (error) {
-            console.error('处理格子点击失败:', error, {
-                index,
-                currentFlippedIndex: this.currentFlippedIndex,
-                boardLength: this.board.length
-            });
         }
+
+        this.currentFlippedIndex = index;
+        
+        // 更新当前点击的格子状态
+        this.board[index].flipped = true;
+        
+        // 重新渲染棋盘
+        this.renderBoard();
     }
 
     // 修改文件上传处理方法
-    async handleFileUpload(index, input) {
-        const file = input.files[0];
-        if (!file) return;
+    async handleFileUpload(event, questionId) {
+        if (this.isBingo) {
+            event.preventDefault();
+            return;
+        }
 
         try {
-            if (file.size > 20 * 1024 * 1024) {
-                throw new Error('文件大小不能超过 20MB');
+            const file = event.target.files[0];
+            if (!file) {
+                console.error('没有选择文件');
+                return;
+            }
+
+            // 修改文件大小限制为 5MB
+            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
+            if (file.size > MAX_FILE_SIZE) {
+                alert('文件大小超过限制（最大5MB），请选择更小的文件');
+                event.target.value = '';
+                return;
             }
 
             console.log('开始处理文件:', file.type);
-            const cell = this.board[index];
 
-            // 创建提交对象
-            const submission = {
-                question: cell.question,
-                fileType: file.type,
-                preview: null
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                try {
+                    const fileContent = e.target.result;
+                    // 获取正确的格子索引
+                    let cellIndex;
+                    if (this.currentFlippedIndex !== null) {
+                        cellIndex = this.currentFlippedIndex;
+                    } else {
+                        // 从事件目标向上查找到格子元素，获取其索引
+                        const cellElement = event.target.closest('.bingo-cell');
+                        const allCells = Array.from(document.querySelectorAll('.bingo-cell'));
+                        cellIndex = allCells.indexOf(cellElement);
+                    }
+                    
+                    if (cellIndex === -1) {
+                        throw new Error('找不到对应的格子');
+                    }
+
+                    // 更新格子状态
+                    this.board[cellIndex] = {
+                        ...this.board[cellIndex],
+                        completed: true,
+                        preview: fileContent,
+                        fileType: file.type,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // 缓存提交
+                    await API.cacheSubmission(
+                        this.currentUser.teamName,
+                        cellIndex,
+                        {
+                            question: this.board[cellIndex].question,
+                            preview: fileContent,
+                            fileType: file.type
+                        }
+                    );
+
+                    // 清空文件输入
+                    event.target.value = '';
+
+                    // 重置当前翻转的格子
+                    this.currentFlippedIndex = null;
+                    
+                    // 保存进度并重新渲染
+                    await this.saveProgress();
+                    this.renderBoard();
+
+                    // 检查是否完成 Bingo
+                    if (this.checkBingo()) {
+                        const currentTime = Date.now();
+                        const finalTotalTime = this.totalPlayTime + (currentTime - this.lastSaveTime);
+                        const duration = Math.floor(finalTotalTime / 1000);
+                        
+                        this.isBingo = true;
+                        await API.updateScore(this.currentUser.teamName, duration);
+                        await API.clearGameProgress(this.currentUser.teamName);
+                        clearInterval(this.timeUpdateInterval);
+                        
+                        this.showBingoDialog(duration);
+                    }
+                } catch (error) {
+                    console.error('处理文件内容失败:', error);
+                    alert('处理文件失败，请重试');
+                }
             };
 
-            // 处理文件上传
             if (file.type.startsWith('text/')) {
-                const text = await file.text();
-                submission.preview = text;
-                
-                // 缓存提交
-                await API.cacheSubmission(this.currentUser.teamName, index, submission);
-                
-                cell.preview = text;
-                cell.fileType = 'text/plain';
-                cell.completed = true;
-                cell.timestamp = new Date().toISOString();
-
-                this.currentFlippedIndex = null;
-                this.renderBoard();
-                await this.saveProgress();
-                await this.checkAndHandleBingo();
+                reader.readAsText(file);
             } else {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    submission.preview = e.target.result;
-                    
-                    // 缓存提交
-                    await API.cacheSubmission(this.currentUser.teamName, index, submission);
-                    
-                    cell.preview = e.target.result;
-                    cell.fileType = file.type;
-                    cell.completed = true;
-                    cell.timestamp = new Date().toISOString();
-
-                    this.currentFlippedIndex = null;
-                    this.renderBoard();
-                    await this.saveProgress();
-                    await this.checkAndHandleBingo();
-                };
                 reader.readAsDataURL(file);
             }
+
         } catch (error) {
             console.error('文件上传失败:', error);
             alert('上传失败，请重试');
@@ -556,19 +670,20 @@ class BingoGame {
 
         if (cell.fileType.startsWith('image/')) {
             return `
-                <div class="w-full h-full flex items-center justify-center">
+                <div class="flex flex-col items-center">
                     <img src="${cell.preview}" 
-                        class="max-w-full max-h-[100px] object-contain rounded cursor-pointer" 
+                        class="max-w-full max-h-[200px] object-contain rounded cursor-pointer" 
                         alt="预览"
                         onclick="game.showPreview(${index})"
                     >
+                    <span class="text-xs text-gray-500 mt-1">点击查看大图</span>
                 </div>
             `;
         } else if (cell.fileType.startsWith('video/')) {
             return `
-                <div class="w-full h-full flex items-center justify-center">
+                <div class="flex flex-col items-center">
                     <div class="relative cursor-pointer" onclick="game.showPreview(${index})">
-                        <video class="max-w-full max-h-[100px] rounded">
+                        <video class="max-w-full max-h-[200px] rounded">
                             <source src="${cell.preview}" type="${cell.fileType}">
                         </video>
                         <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-20">
@@ -578,16 +693,17 @@ class BingoGame {
                             </svg>
                         </div>
                     </div>
+                    <span class="text-xs text-gray-500 mt-1">点击播放视频</span>
                 </div>
             `;
         } else if (cell.fileType.startsWith('text/')) {
             return `
-                <div class="w-full h-full overflow-auto p-2 text-sm">
-                    ${cell.preview}
+                <div class="bg-gray-50 p-3 rounded">
+                    <p class="text-sm text-gray-700">${cell.preview}</p>
                 </div>
             `;
         }
-        return `<p class="text-center">${cell.preview}</p>`;
+        return '<span class="text-gray-500">未知类型的内容</span>';
     }
 
     // 修改 showPreview 方法
@@ -619,7 +735,7 @@ class BingoGame {
                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                        onclick="event.stopPropagation()"
                     >
-                        下载视��
+                        下载视频
                     </a>
                 </div>
             `;
@@ -629,39 +745,95 @@ class BingoGame {
         document.body.appendChild(modal);
     }
 
-    // 添加处理文字输入的方法
+    // 修改 handleTextInput 方法
     async handleTextInput(index, textarea) {
+        if (this.isBingo) return; // 如果已经 Bingo，阻止提交
+        
         const text = textarea.value.trim();
         if (!text) return;
 
         try {
             console.log('处理文字输入:', text);
 
+            // 更新当前格子的状态
             this.board[index] = {
                 ...this.board[index],
                 completed: true,
                 preview: text,
                 fileType: 'text/plain',
-                question: this.board[index].question
+                timestamp: new Date().toISOString()
             };
 
-            this.currentFlippedIndex = null;
-            this.renderBoard();
-            await this.saveProgress();
+            // 缓存提交
+            await API.cacheSubmission(
+                this.currentUser.teamName,
+                index,
+                {
+                    question: this.board[index].question,
+                    preview: text,
+                    fileType: 'text/plain'
+                }
+            );
 
+            // 清空输入框
+            textarea.value = '';
+
+            // 重置当前翻转的格子
+            this.currentFlippedIndex = null;
+            
+            // 保存进度并重新渲染
+            await this.saveProgress();
+            this.renderBoard();
+
+            // 检查是否完成 Bingo
             if (this.checkBingo()) {
                 const currentTime = Date.now();
                 const finalTotalTime = this.totalPlayTime + (currentTime - this.lastSaveTime);
                 const duration = Math.floor(finalTotalTime / 1000);
+                
+                this.isBingo = true;
                 await API.updateScore(this.currentUser.teamName, duration);
                 await API.clearGameProgress(this.currentUser.teamName);
                 clearInterval(this.timeUpdateInterval);
-                document.getElementById('bingoModal').classList.remove('hidden');
+                
+                this.showBingoDialog(duration);
             }
         } catch (error) {
             console.error('文字处理失败:', error);
             alert(error.message || '处理失败，请重试');
         }
+    }
+
+    // 添加新方法：显示 Bingo 提示对话框
+    showBingoDialog(duration) {
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white p-8 rounded-lg max-w-md w-full mx-4">
+                <h2 class="text-2xl font-bold text-center mb-4">恭喜！BINGO!</h2>
+                <p class="text-center text-gray-600 mb-6">
+                    完成用时：${minutes}分${seconds}秒
+                </p>
+                <div class="flex justify-center gap-4">
+                    <button onclick="window.location.href='leaderboard.html'"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                        查看排行榜
+                    </button>
+                    <button onclick="document.querySelector('.fixed').remove()"
+                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        继续浏览
+                    </button>
+                </div>
+                <p class="text-center text-sm text-gray-500 mt-4">
+                    注意：您已无法修改已提交的内容
+                </p>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
 }
 
