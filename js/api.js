@@ -333,31 +333,20 @@ function initAPI() {
                 try {
                     console.log('更新分数:', { teamName, completionTime });
 
-                    // 先检查是否已有记录
-                    const { data: existingScore } = await supabaseClient
+                    // 使用 upsert 操作
+                    const { error } = await supabaseClient
                         .from('leaderboard')
-                        .select('*')
-                        .eq('team_name', teamName)
-                        .single();
+                        .upsert({
+                            team_name: teamName,
+                            completion_time: completionTime
+                        }, {
+                            onConflict: 'team_name'  // 指定冲突列
+                        });
 
-                    if (existingScore) {
-                        // 如果已有记录，使用 update
-                        const { error: updateError } = await supabaseClient
-                            .from('leaderboard')
-                            .update({ completion_time: completionTime })
-                            .eq('team_name', teamName);
-
-                        if (updateError) throw updateError;
-                    } else {
-                        // 如果没有记录，使用 insert
-                        const { error: insertError } = await supabaseClient
-                            .from('leaderboard')
-                            .insert([{
-                                team_name: teamName,
-                                completion_time: completionTime
-                            }]);
-
-                        if (insertError) throw insertError;
+                    if (error) {
+                        console.error('更新分数失败:', error);
+                        // 不抛出错误，让游戏继续进行
+                        return false;
                     }
 
                     console.log('分数更新成功');
