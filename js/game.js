@@ -187,29 +187,47 @@ class BingoGame {
             return;
         }
 
-        // 如果还没翻开，先翻开
+        // 如果还没翻开，翻开并立即显示提交对话框
         if (!this.board[index].flipped) {
             this.board[index].flipped = true;
+            await this.saveProgress();  // 保存翻开状态
             this.updateUI();
+            // 立即显示任务提交对话框
+            setTimeout(() => this.showTaskModal(index), 100);
             return;
         }
 
-        // 如果已经翻开但还没完成，显示任务提交对话框
+        // 如果已经翻开，再次点击也显示任务提交对话框
         this.showTaskModal(index);
     }
 
     showTaskModal(index) {
-        const modal = document.getElementById('taskModal');
+        console.log('显示任务提交对话框');
+        const modal = document.getElementById('taskSubmitModal');
         const question = document.getElementById('taskQuestion');
-        const form = document.getElementById('taskForm');
+        const form = document.getElementById('taskSubmitForm');
         
-        if (!modal || !question || !form) return;
+        if (!modal || !question || !form) {
+            console.error('找不到必要的DOM元素:', {
+                modal: !!modal,
+                question: !!question,
+                form: !!form,
+                modalId: modal?.id,
+                questionId: question?.id,
+                formId: form?.id
+            });
+            return;
+        }
 
         // 显示题目
         question.textContent = this.board[index].question;
 
         // 重置表单
         form.reset();
+        const filePreview = document.getElementById('filePreview');
+        if (filePreview) {
+            filePreview.classList.add('hidden');
+        }
 
         // 保存当前操作的格子索引
         this.currentTaskIndex = index;
@@ -222,12 +240,26 @@ class BingoGame {
 
         // 显示对话框
         modal.classList.remove('hidden');
+        console.log('任务提交对话框已显示:', {
+            question: this.board[index].question,
+            index,
+            modalVisible: !modal.classList.contains('hidden')
+        });
     }
 
     closeTaskModal() {
-        const modal = document.getElementById('taskModal');
+        const modal = document.getElementById('taskSubmitModal');
         if (modal) {
             modal.classList.add('hidden');
+            // 清理表单
+            const form = document.getElementById('taskSubmitForm');
+            if (form) {
+                form.reset();
+            }
+            const filePreview = document.getElementById('filePreview');
+            if (filePreview) {
+                filePreview.classList.add('hidden');
+            }
         }
         this.currentTaskIndex = null;
     }
@@ -239,6 +271,12 @@ class BingoGame {
             const description = document.getElementById('taskDescription').value;
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
+
+            console.log('处理任务提交:', {
+                description,
+                hasFile: !!file,
+                fileName: file?.name
+            });
 
             // 保存任务提交
             const submission = {
@@ -261,6 +299,9 @@ class BingoGame {
 
             // 关闭对话框
             this.closeTaskModal();
+
+            // 更新界面
+            this.updateUI();
 
             // 检查是否完成 Bingo
             if (this.checkBingo()) {
