@@ -49,9 +49,17 @@ class Auth {
             this.init();
         } else {
             this.logError('等待 API 准备...');
-            window.addEventListener('APIReady', () => {
-                this.logError('收到 API 就绪事件，开始初始化');
-                this.init();
+            document.addEventListener('DOMContentLoaded', () => {
+                if (window.API) {
+                    this.logError('DOM加载完成后发现API已就绪，开始初始化');
+                    this.init();
+                } else {
+                    this.logError('DOM加载完成但API未就绪，等待APIReady事件');
+                    window.addEventListener('APIReady', () => {
+                        this.logError('收到 API 就绪事件，开始初始化');
+                        this.init();
+                    });
+                }
             });
         }
     }
@@ -71,18 +79,21 @@ class Auth {
     }
 
     init() {
-        console.log('开始初始化登录表单');
+        this.logError('开始初始化登录表单');
         if (this.loginForm) {
-            console.log('找到登录表单，绑定提交事件');
+            this.logError('找到登录表单，绑定提交事件');
             this.loginForm.addEventListener('submit', async (e) => {
-                console.log('表单提交事件触发');
                 e.preventDefault();
+                this.logError('表单提交事件触发');
                 await this.handleLogin();
             });
+            this.logError('登录表单事件绑定完成');
         } else {
-            console.warn('未找到登录表单元素');
+            this.logError('未找到登录表单元素，当前页面元素:', {
+                body: document.body.innerHTML,
+                loginForm: document.getElementById('loginForm')
+            });
         }
-        console.log('登录表单初始化完成');
     }
 
     async handleLogin() {
@@ -156,11 +167,11 @@ class Auth {
     }
 }
 
-// 显示之前的错误日志
-const previousLogs = localStorage.getItem('authErrorLogs');
-if (previousLogs) {
-    console.log('之前的错误日志:', JSON.parse(previousLogs));
-}
+// 清除之前的错误日志
+localStorage.removeItem('authErrorLogs');
 
 // 初始化认证
-window.auth = new Auth(); 
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM加载完成，初始化Auth');
+    window.auth = new Auth();
+}); 
