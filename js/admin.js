@@ -89,6 +89,14 @@ class AdminPanel {
         
         // 初始载排行榜
         this.refreshLeaderboard();
+
+        // 添加全选和批量删除的事件监听器
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.addEventListener('change', () => this.handleSelectAll());
+        }
+        if (this.batchDeleteBtn) {
+            this.batchDeleteBtn.addEventListener('click', () => this.handleBatchDelete());
+        }
     }
 
     initPanels() {
@@ -463,7 +471,7 @@ class AdminPanel {
 
     // 处理批量删除
     async handleBatchDelete() {
-        const checkedBoxes = this.questionsList.querySelectorAll('.question-checkbox:checked');
+        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
         if (checkedBoxes.length === 0) return;
 
         const confirmMessage = checkedBoxes.length === 1 
@@ -473,17 +481,16 @@ class AdminPanel {
         if (!confirm(confirmMessage)) return;
 
         try {
-            const questionIds = Array.from(checkedBoxes).map(cb => 
-                parseInt(cb.getAttribute('data-question-id'))
-            );
+            // 获取所有选中题目的 ID
+            const questionIds = Array.from(checkedBoxes).map(cb => cb.dataset.id);
 
             // 逐个删除选中的题目
             for (const id of questionIds) {
-                await API.deleteQuestion(id);
+                await window.API.deleteQuestion(id);
             }
 
+            // 重新加载题目列表
             await this.loadQuestions();
-            await this.updateGridSizeOptions();
             alert('选中的题目已删除');
         } catch (error) {
             console.error('批量删除失败:', error);
