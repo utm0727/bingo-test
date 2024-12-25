@@ -333,20 +333,42 @@ function initAPI() {
                 try {
                     console.log('更新分数:', { teamName, completionTime });
 
-                    // 使用 upsert 操作
-                    const { error } = await supabaseClient
+                    // 先检查是否已有记录
+                    const { data: existingScore, error: checkError } = await supabaseClient
                         .from('leaderboard')
-                        .upsert({
-                            team_name: teamName,
-                            completion_time: completionTime
-                        }, {
-                            onConflict: 'team_name'  // 指定冲突列
-                        });
+                        .select('*')
+                        .eq('team_name', teamName)
+                        .single();
 
-                    if (error) {
-                        console.error('更新分数失败:', error);
-                        // 不抛出错误，让游戏继续进行
+                    if (checkError && checkError.code !== 'PGRST116') {  // PGRST116 是"没有找到记录"的错误
+                        console.error('检查分数记录失败:', checkError);
                         return false;
+                    }
+
+                    if (existingScore) {
+                        // 如果已有记录，使用 update
+                        const { error: updateError } = await supabaseClient
+                            .from('leaderboard')
+                            .update({ completion_time: completionTime })
+                            .eq('team_name', teamName);
+
+                        if (updateError) {
+                            console.error('更新分数失败:', updateError);
+                            return false;
+                        }
+                    } else {
+                        // 如果没有记录，使用 insert
+                        const { error: insertError } = await supabaseClient
+                            .from('leaderboard')
+                            .insert([{
+                                team_name: teamName,
+                                completion_time: completionTime
+                            }]);
+
+                        if (insertError) {
+                            console.error('插入分数失败:', insertError);
+                            return false;
+                        }
                     }
 
                     console.log('分数更新成功');
