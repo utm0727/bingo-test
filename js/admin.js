@@ -456,46 +456,62 @@ class AdminPanel {
     bindSelectAllEvents() {
         // 绑定全选复选框事件
         if (this.selectAllCheckbox) {
-            this.selectAllCheckbox.removeEventListener('change', () => this.handleSelectAll());
-            this.selectAllCheckbox.addEventListener('change', () => {
+            // 使用箭头函数保持 this 上下文
+            const handleSelectAllChange = () => {
                 const checkboxes = document.querySelectorAll('.question-checkbox');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = this.selectAllCheckbox.checked;
                 });
                 this.updateBatchDeleteButton();
-            });
+            };
+            
+            this.selectAllCheckbox.removeEventListener('change', handleSelectAllChange);
+            this.selectAllCheckbox.addEventListener('change', handleSelectAllChange);
         }
 
         // 绑定批量删除按钮事件
         if (this.batchDeleteBtn) {
-            this.batchDeleteBtn.removeEventListener('click', () => this.handleBatchDelete());
-            this.batchDeleteBtn.addEventListener('click', async () => {
+            // 使用箭头函数保持 this 上下文
+            const handleBatchDelete = async () => {
                 const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
-                if (checkedBoxes.length === 0) return;
+                if (checkedBoxes.length === 0) {
+                    alert('请先选择要删除的题目');
+                    return;
+                }
 
                 if (!confirm(`确定要删除选中的 ${checkedBoxes.length} 个题目吗？`)) return;
 
                 try {
                     const ids = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+                    console.log('正在批量删除题目:', ids);
+                    
                     for (const id of ids) {
                         await window.API.deleteQuestion(id);
                     }
+                    
                     await this.loadQuestions();
                     alert('选中的题目已删除');
                 } catch (error) {
                     console.error('批量删除失败:', error);
                     alert('删除失败，请重试');
                 }
-            });
+            };
+
+            // 移除旧的事件监听器并添加新的
+            this.batchDeleteBtn.removeEventListener('click', handleBatchDelete);
+            this.batchDeleteBtn.addEventListener('click', handleBatchDelete);
         }
 
         // 绑定单个复选框的变化事件
         const checkboxes = document.querySelectorAll('.question-checkbox');
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
+            const handleCheckboxChange = () => {
                 this.updateSelectAllState();
                 this.updateBatchDeleteButton();
-            });
+            };
+            
+            checkbox.removeEventListener('change', handleCheckboxChange);
+            checkbox.addEventListener('change', handleCheckboxChange);
         });
     }
 
