@@ -90,8 +90,13 @@ class AdminPanel {
 
     async handleLogin(e) {
         e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        if (!username || !password) {
+            alert('用户名和密码不能为空');
+            return;
+        }
 
         try {
             console.log('尝试登录:', username);
