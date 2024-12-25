@@ -18,19 +18,33 @@ class Auth {
         this.logError('Auth 类初始化开始');
         
         // 获取当前页面路径
-        const currentPath = window.location.pathname;
-        this.logError('当前页面路径:', currentPath);
+        const fullPath = window.location.pathname;
+        this.logError('当前页面路径:', fullPath);
 
         // 设置基础URL
-        this.baseUrl = currentPath.includes('/bingo-test/pages/') 
-            ? '../'
-            : currentPath.includes('/bingo-test/') 
-                ? './'
-                : '/bingo-test/';
-        this.logError('基础URL:', this.baseUrl);
+        this.baseUrl = '';
+        
+        if (fullPath.includes('/bingo-test/')) {
+            // 如果在 pages 目录下
+            if (fullPath.includes('/pages/')) {
+                this.baseUrl = '../';
+            } else {
+                // 如果在根目录
+                this.baseUrl = './';
+            }
+        } else {
+            // 如果在其他位置
+            this.baseUrl = '/bingo-test/';
+        }
+
+        this.logError('路径信息:', {
+            fullPath,
+            baseUrl: this.baseUrl,
+            currentLocation: window.location.href
+        });
 
         // 如果是游戏页面，检查登录状态
-        if (currentPath.includes('/game.html')) {
+        if (fullPath.includes('/game.html')) {
             const currentUser = localStorage.getItem('currentUser');
             if (!currentUser) {
                 this.logError('游戏页面检测到未登录状态，重定向到登录页面');
@@ -40,7 +54,7 @@ class Auth {
         }
 
         // 只在登录页面初始化登录表单
-        if (currentPath.endsWith('/index.html') || currentPath.endsWith('/bingo-test/')) {
+        if (fullPath.endsWith('/index.html') || fullPath.endsWith('/bingo-test/')) {
             this.loginForm = document.getElementById('loginForm');
             if (this.loginForm) {
                 this.init();
@@ -129,12 +143,23 @@ class Auth {
                 
                 localStorage.setItem('currentUser', JSON.stringify(userData));
                 
-                const gamePath = this.baseUrl + 'pages/game.html';
-                this.logError('用户信息已保存，准备跳转到:', gamePath);
+                // 修改游戏页面路径的构建
+                let gamePath = this.baseUrl + 'pages/game.html';
                 
-                // 使用 setTimeout 确保日志保存后再跳转
+                // 确保路径正确
+                gamePath = gamePath.replace('//', '/');
+                
+                this.logError('准备跳转:', {
+                    gamePath,
+                    baseUrl: this.baseUrl,
+                    currentLocation: window.location.href
+                });
+                
+                // 使用完整的 URL
+                const fullGamePath = new URL(gamePath, window.location.origin).href;
+                
                 setTimeout(() => {
-                    window.location.href = gamePath;
+                    window.location.href = fullGamePath;
                 }, 100);
             } else {
                 this.logError('登录失败：无效的用户数据', user);
@@ -143,7 +168,8 @@ class Auth {
         } catch (error) {
             this.logError('登录过程出错:', {
                 error,
-                stack: error.stack
+                stack: error.stack,
+                currentLocation: window.location.href
             });
             alert('登录失败，请重试');
         }

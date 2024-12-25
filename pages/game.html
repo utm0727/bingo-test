@@ -5,60 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bingo 游戏</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="../css/style.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen py-6 px-4">
-        <div class="max-w-4xl mx-auto">
-            <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">Bingo 游戏</h1>
-                <div class="flex gap-4 items-center">
-                    <span id="teamInfo" class="text-gray-600"></span>
-                    <span id="gameProgress" class="text-gray-600"></span>
-                    <span id="gameTime" class="text-gray-600"></span>
-                    <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">查看排行榜</a>
-                </div>
-            </div>
-
-            <div id="gameBoard" class="grid grid-cols-5 gap-4">
-                <!-- 游戏格子将通过 JavaScript 动态生成 -->
-            </div>
-        </div>
+    <!-- 游戏界面内容 -->
+    <div id="gameBoard" class="grid gap-4 p-4">
+        <!-- 游戏格子将在这里动态生成 -->
     </div>
 
-    <!-- Bingo 提示弹窗 -->
-    <div id="bingoModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">恭喜！BINGO!</h2>
-            <button onclick="window.location.href='leaderboard.html'"
-                class="bg-indigo-600 text-white px-4 py-2 rounded">
-                查看排行榜
-            </button>
-        </div>
-    </div>
-
-    <!-- 先加载 Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
-    <!-- 然后加载 API -->
+    <!-- 加载脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/api.js"></script>
-
-    <!-- 最后加载游戏脚本 -->
-    <script>
-        // 等待 API 准备好再初始化游戏
-        function initGame() {
-            if (window.API && window.API.getGameProgress) {
-                console.log('API 已就绪，初始化游戏...');
-                new BingoGame();
-            } else {
-                console.log('等待 API 准备...');
-                setTimeout(initGame, 100);
-            }
-        }
-        
-        // 开始初始化
-        window.addEventListener('load', initGame);
-    </script>
     <script src="../js/game.js"></script>
 </body>
 </html> 
