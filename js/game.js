@@ -8,12 +8,19 @@ class BingoGame {
         this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
         this.currentFlippedIndex = null;
         this.isBingo = false;
+
         // 等待 API 准备好再初始化
         if (window.API) {
+            console.log('API 已就绪，开始初始化游戏');
             this.initGame();
         } else {
-            window.addEventListener('APIReady', () => this.initGame());
+            console.log('等待 API 准备...');
+            window.addEventListener('APIReady', () => {
+                console.log('API 就绪，开始初始化游戏');
+                this.initGame();
+            });
         }
+        
         this.setupAutoSave();
     }
 
