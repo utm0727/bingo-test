@@ -152,17 +152,20 @@ function initAPI() {
             // 检查游戏完成状态
             async checkGameCompletion(teamName) {
                 try {
+                    console.log('检查游戏完成状态:', teamName);
+                    
                     const { data, error } = await supabaseClient
-                        .from('scores')
+                        .from('leaderboard')
                         .select('*')
                         .eq('team_name', teamName)
-                        .maybeSingle();
+                        .single();
 
-                    if (error) {
+                    if (error && error.code !== 'PGRST116') {  // PGRST116 是"没有找到记录"的错误
                         console.error('检查游戏完成状态失败:', error);
                         return false;
                     }
-                    return !!data;
+
+                    return !!data;  // 如果有记录就表示完成了
                 } catch (error) {
                     console.error('检查游戏完成状态失败:', error);
                     return false;
@@ -215,27 +218,21 @@ function initAPI() {
             // 获取排行榜
             async getLeaderboard() {
                 try {
+                    console.log('获取排行榜数据');
+                    
+                    // 获取所有完成游戏的记录，按完成时间排序
                     const { data, error } = await supabaseClient
-                        .from('scores')
-                        .select(`
-                            team_name,
-                            score,
-                            created_at,
-                            users (
-                                leader_name
-                            )
-                        `)
-                        .order('score', { ascending: true })
-                        .limit(10);
+                        .from('leaderboard')
+                        .select('*')
+                        .order('completion_time', { ascending: true });  // 按完成时间升序排序
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('获取排行榜失败:', error);
+                        throw error;
+                    }
 
-                    return data.map(score => ({
-                        teamName: score.team_name,
-                        score: score.score,
-                        leaderName: score.users?.leader_name,
-                        timestamp: score.created_at
-                    }));
+                    console.log('获取到的排行榜数据:', data);
+                    return data || [];
                 } catch (error) {
                     console.error('获取排行榜失败:', error);
                     return [];
