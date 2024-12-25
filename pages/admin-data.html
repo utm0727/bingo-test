@@ -166,6 +166,7 @@
         // 修改 loadTeamData 函数
         async function loadTeamData() {
             const teamName = document.getElementById('teamSelector').value;
+            currentTeam = teamName;
             const teamDataPanel = document.getElementById('teamDataPanel');
             
             if (!teamName) {

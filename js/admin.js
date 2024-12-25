@@ -435,7 +435,7 @@ function handleLogout() {
     }
 }
 
-// 初始化管理员面板
+// 初���化管理员面板
 window.adminPanel = new AdminPanel();
 
 // 添加全局折叠面板控制函数

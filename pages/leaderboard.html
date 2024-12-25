@@ -124,6 +124,11 @@
             // 加载排行榜和显示完成消息
             loadLeaderboard();
             showCompletionMessage();
+
+            // 添加自动刷新
+            setInterval(() => {
+                loadLeaderboard();
+            }, 30000); // 每30秒刷新一次
         });
     </script>
 </body>
