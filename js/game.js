@@ -86,11 +86,17 @@ class BingoGame {
             const questions = await window.API.getRandomQuestions(this.size * this.size);
             console.log('获取到的随机题目:', questions);
             
+            if (!questions || questions.length < this.size * this.size) {
+                throw new Error('获取题目失败或题目数量不足');
+            }
+            
             // 创建新的游戏板
             this.board = questions.map(q => ({
-                question: q.question,
+                question: q.question || '题目加载失败',
                 flipped: false
             }));
+            
+            console.log('创建的新游戏板:', this.board);
             
             // 重置时间
             this.startTime = Date.now();
@@ -127,41 +133,62 @@ class BingoGame {
         gameBoard.style.display = 'grid';
         gameBoard.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
         gameBoard.style.gap = '1rem';
+        gameBoard.style.padding = '1rem';
 
         // 渲染每个格子
         this.board.forEach((cell, index) => {
             const cellDiv = document.createElement('div');
-            cellDiv.className = `p-4 rounded shadow cursor-pointer transition-all duration-200 ${
-                cell.flipped 
-                    ? 'bg-indigo-100 text-indigo-900' 
-                    : 'bg-white hover:bg-gray-50'
-            }`;
-            cellDiv.textContent = cell.flipped ? cell.question : '点击查看题目';
-            cellDiv.onclick = () => this.handleCellClick(index);
+            
+            // 添加基础样式
+            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex items-center justify-center text-center';
+            
+            // 根据状态添加额外样式
+            if (cell.flipped) {
+                cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
+                cellDiv.textContent = cell.question;
+            } else {
+                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
+                cellDiv.textContent = '点击查看题目';
+            }
+
+            // 添加点击事件
+            cellDiv.onclick = () => {
+                if (!cell.flipped && !this.isBingo) {
+                    this.handleCellClick(index);
+                }
+            };
 
             gameBoard.appendChild(cellDiv);
         });
-        console.log('界面更新完成');
+
+        console.log('界面更新完成，当前游戏板状态:', this.board);
     }
 
     async handleCellClick(index) {
-        console.log('格子点击:', index);
+        console.log('格子点击:', index, '当前格子状态:', this.board[index]);
         if (this.isBingo || this.board[index].flipped) {
             return;
         }
 
-        // 翻转格子
-        this.board[index].flipped = true;
-        this.updateUI();
+        try {
+            // 翻转格子
+            this.board[index].flipped = true;
+            console.log('格子已翻转，新状态:', this.board[index]);
 
-        // 检查是否完成 Bingo
-        if (this.checkBingo()) {
-            this.isBingo = true;
-            const totalTime = Date.now() - this.startTime + this.totalPlayTime;
-            await this.handleGameComplete(totalTime);
-        } else {
-            // 保存进度
-            await this.saveProgress();
+            // 更新界面
+            this.updateUI();
+
+            // 检查是否完成 Bingo
+            if (this.checkBingo()) {
+                this.isBingo = true;
+                const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                await this.handleGameComplete(totalTime);
+            } else {
+                // 保存进度
+                await this.saveProgress();
+            }
+        } catch (error) {
+            console.error('处理格子点击失败:', error);
         }
     }
 
