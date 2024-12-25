@@ -277,11 +277,11 @@ function initAPI() {
                                     cell.submission.file
                                 );
                                 
-                                // 保存完整的文件信息
+                                // 保存完整的文件信息，确保包含所有必要信息
                                 cell.submission = {
                                     ...cell.submission,
-                                    filePath: fileResult.path,
-                                    fileUrl: fileResult.url,
+                                    filePath: fileResult.path,  // 使用简单的文件名
+                                    fileUrl: fileResult.url,    // 保存完整的URL
                                     fileType: fileResult.fileType,
                                     fileName: fileResult.fileName,
                                     uploadTime: fileResult.uploadTime
@@ -291,7 +291,6 @@ function initAPI() {
                                 delete cell.submission.file;
                             } catch (error) {
                                 console.error('文件上传失败:', error);
-                                // 继续保存其他数据
                             }
                         }
                     }
@@ -526,16 +525,13 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 先尝试初始化存储
-                    await this.initStorage();
-
                     // 上传文件
                     const { data, error } = await supabaseClient.storage
                         .from('submissions')
                         .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: true,
-                            contentType: file.type  // 添加 contentType
+                            contentType: file.type
                         });
 
                     if (error) throw error;
@@ -547,19 +543,11 @@ function initAPI() {
                         .from('submissions')
                         .getPublicUrl(fileName);
 
-                    // 验证URL是否可访问
-                    try {
-                        const response = await fetch(publicUrl, { method: 'HEAD' });
-                        if (!response.ok) {
-                            throw new Error('URL不可访问');
-                        }
-                    } catch (urlError) {
-                        console.error('URL验证失败:', urlError);
-                    }
+                    console.log('获取到的公共URL:', publicUrl);
 
                     // 保存完整信息
                     return {
-                        path: fileName,
+                        path: fileName,  // 保存简单的文件名
                         url: publicUrl,
                         fileType: file.type,
                         fileName: file.name,
@@ -574,46 +562,58 @@ function initAPI() {
             // 修改获取文件 URL 的方法
             async getSubmissionFileUrl(filePath) {
                 try {
-                    console.log('正在获取文件URL:', filePath);
+                    console.log('正在获取文件URL, 原始路径:', filePath);
 
                     // 如果是完整URL，验证并返回
                     if (filePath.startsWith('http')) {
+                        const isValid = await this.validateFileUrl(filePath);
+                        if (isValid) {
+                            return filePath;
+                        }
+                        console.log('已保存的URL无效，尝试重新获取');
+                    }
+
+                    // 确保路径不以斜杠开头
+                    const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+                    console.log('处理后的路径:', cleanPath);
+
+                    // 尝试不同的方法获取URL
+                    const methods = [
+                        // 方法1：使用 getPublicUrl
+                        async () => {
+                            const { data: { publicUrl } } = supabaseClient.storage
+                                .from('submissions')
+                                .getPublicUrl(cleanPath);
+                            return publicUrl;
+                        },
+                        // 方法2：使用 createSignedUrl
+                        async () => {
+                            const { data } = await supabaseClient.storage
+                                .from('submissions')
+                                .createSignedUrl(cleanPath, 3600);
+                            return data?.signedUrl;
+                        },
+                        // 方法3：直接构建URL
+                        async () => {
+                            const baseUrl = 'https://vwkkwthrkqyjmirsgqoo.supabase.co/storage/v1/object/public/submissions/';
+                            return baseUrl + encodeURIComponent(cleanPath);
+                        }
+                    ];
+
+                    // 依次尝试每种方法
+                    for (const method of methods) {
                         try {
-                            const response = await fetch(filePath, { method: 'HEAD' });
-                            if (response.ok) {
-                                return filePath;
+                            const url = await method();
+                            if (url && await this.validateFileUrl(url)) {
+                                console.log('成功获取到有效的URL:', url);
+                                return url;
                             }
                         } catch (error) {
-                            console.error('URL验证失败:', error);
+                            console.error('尝试获取URL失败:', error);
                         }
                     }
 
-                    // 尝试获取公共URL
-                    const { data: { publicUrl } } = supabaseClient.storage
-                        .from('submissions')
-                        .getPublicUrl(filePath);
-
-                    // 验证新的URL
-                    try {
-                        const response = await fetch(publicUrl, { method: 'HEAD' });
-                        if (!response.ok) {
-                            throw new Error('URL不可访问');
-                        }
-                    } catch (error) {
-                        console.error('URL验证失败:', error);
-                        // 尝试获取签名URL作为备选
-                        const { data, error: signedError } = await supabaseClient.storage
-                            .from('submissions')
-                            .createSignedUrl(filePath, 3600);
-
-                        if (!signedError && data?.signedUrl) {
-                            return data.signedUrl;
-                        }
-                        throw error;
-                    }
-
-                    console.log('获取到公共URL:', publicUrl);
-                    return publicUrl;
+                    throw new Error('无法获取有效的文件URL');
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
                     return null;
@@ -674,6 +674,17 @@ function initAPI() {
                     reader.onerror = error => reject(error);
                     reader.readAsDataURL(file);
                 });
+            },
+
+            // 添加文件验证方法
+            async validateFileUrl(url) {
+                try {
+                    const response = await fetch(url, { method: 'HEAD' });
+                    return response.ok;
+                } catch (error) {
+                    console.error('文件验证失败:', error);
+                    return false;
+                }
             }
         };
 
