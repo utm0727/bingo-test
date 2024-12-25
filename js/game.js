@@ -272,24 +272,29 @@ class BingoGame {
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
+            if (!description.trim()) {
+                alert('请填写任务完成说明');
+                return;
+            }
+
             // 保存任务提交
             const submission = {
-                description,
+                description: description.trim(),
                 timestamp: new Date().toISOString()
             };
 
             // 如果有文件，先尝试上传
             if (file) {
                 try {
-                    const filePath = await window.API.uploadTaskFile(
-                        this.currentUser.team_name,
-                        this.board[this.currentTaskIndex].id,
-                        file
-                    );
-                    submission.filePath = filePath;
+                    // 添加文件大小检查
+                    if (file.size > 50 * 1024 * 1024) { // 50MB
+                        throw new Error('文件大小不能超过 50MB');
+                    }
+
+                    submission.file = file;  // 临时保存文件对象
                 } catch (error) {
-                    console.error('文件上传失败:', error);
-                    if (!confirm('文件上传失败，是否继续提交文字说明？')) {
+                    console.error('文件处理失败:', error);
+                    if (!confirm('文件处理失败：' + error.message + '\n是否继续提交文字说明？')) {
                         return;
                     }
                 }
@@ -299,24 +304,32 @@ class BingoGame {
             this.board[this.currentTaskIndex].completed = true;
             this.board[this.currentTaskIndex].submission = submission;
 
-            // 保存进度
-            await this.saveProgress();
+            try {
+                // 保存进度
+                await this.saveProgress();
 
-            // 关闭对话框
-            this.closeTaskModal();
+                // 关闭对话框
+                this.closeTaskModal();
 
-            // 更新界面
-            this.updateUI();
+                // 更新界面
+                this.updateUI();
 
-            // 检查是否完成 Bingo
-            if (this.checkBingo()) {
-                this.isBingo = true;
-                const totalTime = Date.now() - this.startTime + this.totalPlayTime;
-                await this.handleGameComplete(totalTime);
+                // 检查是否完成 Bingo
+                if (this.checkBingo()) {
+                    this.isBingo = true;
+                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                    await this.handleGameComplete(totalTime);
+                }
+            } catch (error) {
+                console.error('保存进度失败:', error);
+                // 回滚状态
+                this.board[this.currentTaskIndex].completed = false;
+                delete this.board[this.currentTaskIndex].submission;
+                throw error;
             }
         } catch (error) {
             console.error('提交任务失败:', error);
-            alert('提交失败，请重试');
+            alert('提交失败：' + (error.message || '请重试'));
         }
     }
 
