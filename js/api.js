@@ -505,10 +505,13 @@ function initAPI() {
             // 添加文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
-                    // 确保存储桶已初始化
                     await this.initStorage();
 
-                    const fileName = `${teamName}/${taskId}/${Date.now()}_${file.name}`;
+                    // 创建更简单的文件路径
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${teamName}_${taskId}_${Date.now()}.${fileExt}`;
+
+                    // 尝试直接上传
                     const { data, error } = await supabaseClient.storage
                         .from('task-submissions')
                         .upload(fileName, file, {
@@ -516,25 +519,26 @@ function initAPI() {
                             upsert: true
                         });
 
-                    if (error) throw error;
+                    if (error) {
+                        // 如果是存储桶不存在错误，尝试使用其他存储桶
+                        if (error.statusCode === 404 && error.message === 'Bucket not found') {
+                            // 尝试使用默认存储桶 'public'
+                            const { data: publicData, error: publicError } = await supabaseClient.storage
+                                .from('public')
+                                .upload(fileName, file, {
+                                    cacheControl: '3600',
+                                    upsert: true
+                                });
+
+                            if (publicError) throw publicError;
+                            return publicData.path;
+                        }
+                        throw error;
+                    }
+
                     return data.path;
                 } catch (error) {
                     console.error('上传文件失败:', error);
-                    // 如果是存储桶不存在的错误，尝试重新创建
-                    if (error.statusCode === 404 && error.message === 'Bucket not found') {
-                        await this.initStorage();
-                        // 重试上传
-                        const fileName = `${teamName}/${taskId}/${Date.now()}_${file.name}`;
-                        const { data, error: retryError } = await supabaseClient.storage
-                            .from('task-submissions')
-                            .upload(fileName, file, {
-                                cacheControl: '3600',
-                                upsert: true
-                            });
-
-                        if (retryError) throw retryError;
-                        return data.path;
-                    }
                     throw error;
                 }
             },
@@ -542,11 +546,21 @@ function initAPI() {
             // 添加获取提交文件URL的方法
             async getSubmissionFileUrl(filePath) {
                 try {
-                    const { data, error } = await supabaseClient.storage
+                    // 尝试从 task-submissions 获取
+                    let { data, error } = await supabaseClient.storage
                         .from('task-submissions')
-                        .createSignedUrl(filePath, 3600); // 1小时有效期
+                        .createSignedUrl(filePath, 3600);
 
-                    if (error) throw error;
+                    if (error) {
+                        // 如果失败，尝试从 public 获取
+                        const { data: publicData, error: publicError } = await supabaseClient.storage
+                            .from('public')
+                            .createSignedUrl(filePath, 3600);
+
+                        if (publicError) throw publicError;
+                        return publicData.signedUrl;
+                    }
+
                     return data.signedUrl;
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
@@ -565,41 +579,20 @@ function initAPI() {
                     if (listError) {
                         console.error('检查存储桶失败:', listError);
                         // 如果是权限错误，尝试直接使用存储桶
-                        if (listError.statusCode === 401) {
-                            return true;
-                        }
-                        throw listError;
+                        return true; // 继续尝试使用存储桶
                     }
 
                     const bucketExists = buckets?.some(b => b.name === 'task-submissions');
                     
                     if (!bucketExists) {
-                        // 创建存储桶
-                        const { error: createError } = await supabaseClient
-                            .storage
-                            .createBucket('task-submissions', {
-                                public: true  // 修改为公开访问
-                            });
-
-                        if (createError) {
-                            console.error('创建存储桶失败:', createError);
-                            // 如果是权限错误，尝试直接使用存储桶
-                            if (createError.statusCode === 401) {
-                                return true;
-                            }
-                            throw createError;
-                        }
-                        console.log('存储桶创建成功');
+                        console.log('存储桶不存在，尝试使用默认存储桶');
+                        return true; // 使用默认存储桶
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
-                    // 如果是权限错误，返回 true
-                    if (error.statusCode === 401) {
-                        return true;
-                    }
-                    return false;
+                    return true; // 继续尝试使用存储桶
                 }
             }
         };
