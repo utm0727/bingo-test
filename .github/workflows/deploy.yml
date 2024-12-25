@@ -1,1 +1,29 @@
- 
+name: Deploy to GitHub Pages
+
+# 定义触发事件
+on:
+  # 当推送到main分支时触发
+  push:
+    branches: [ main ]
+  # 当pull request到main分支时触发（可选）
+  pull_request:
+    branches: [ main ]
+  # 允许手动触发（可选）
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: .
+          branch: gh-pages
+          clean: true 
