@@ -18,11 +18,10 @@ class BingoGame {
         }
 
         this.board = [];
-        this.size = 5;
+        this.size = 3; // 默认大小
         this.startTime = Date.now();
         this.totalPlayTime = 0;
         this.lastSaveTime = Date.now();
-        this.currentFlippedIndex = null;
         this.isBingo = false;
 
         // 等待 API 准备好再初始化
@@ -38,9 +37,83 @@ class BingoGame {
         }
     }
 
-    // 添加渲染游戏板方法
-    renderBoard() {
-        console.log('开始渲染游戏板');
+    async initGame() {
+        try {
+            // 获取游戏设置
+            const settings = await window.API.getGameSettings();
+            this.size = settings.gridSize;
+            console.log('游戏设置:', settings);
+
+            // 检查是否已完成
+            const isCompleted = await window.API.checkGameCompletion(this.currentUser.team_name);
+            if (isCompleted) {
+                console.log('游戏已完成');
+                this.isBingo = true;
+                const bingoModal = document.getElementById('bingoModal');
+                if (bingoModal) {
+                    bingoModal.classList.remove('hidden');
+                }
+                return;
+            }
+
+            // 尝试恢复进度
+            const savedProgress = await window.API.getGameProgress(this.currentUser.team_name);
+            console.log('保存的进度:', savedProgress);
+
+            if (savedProgress) {
+                this.board = savedProgress.board;
+                this.startTime = savedProgress.startTime;
+                this.totalPlayTime = savedProgress.totalPlayTime || 0;
+                this.lastSaveTime = savedProgress.lastSaveTime;
+                console.log('已恢复保存的进度');
+            } else {
+                console.log('没有找到保存的进度，创建新游戏');
+                await this.createNewGame();
+            }
+
+            // 更新界面
+            this.updateUI();
+            this.setupAutoSave();
+        } catch (error) {
+            console.error('初始化游戏失败:', error);
+            alert('初始化游戏失败，请刷新页面重试');
+        }
+    }
+
+    async createNewGame() {
+        try {
+            // 获取随机题目
+            const questions = await window.API.getRandomQuestions(this.size * this.size);
+            console.log('获取到的随机题目:', questions);
+            
+            // 创建新的游戏板
+            this.board = questions.map(q => ({
+                question: q.question,
+                flipped: false
+            }));
+            
+            // 重置时间
+            this.startTime = Date.now();
+            this.totalPlayTime = 0;
+            this.lastSaveTime = Date.now();
+            
+            // 保存初始进度
+            await this.saveProgress();
+        } catch (error) {
+            console.error('创建新游戏失败:', error);
+            throw error;
+        }
+    }
+
+    updateUI() {
+        console.log('开始更新界面');
+        // 更新团队信息
+        const teamInfo = document.getElementById('teamInfo');
+        if (teamInfo) {
+            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
+        }
+
+        // 更新游戏板
         const gameBoard = document.getElementById('gameBoard');
         if (!gameBoard) {
             console.error('找不到游戏板元素');
@@ -54,27 +127,23 @@ class BingoGame {
         gameBoard.style.display = 'grid';
         gameBoard.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
         gameBoard.style.gap = '1rem';
-        gameBoard.style.padding = '1rem';
 
         // 渲染每个格子
         this.board.forEach((cell, index) => {
             const cellDiv = document.createElement('div');
-            cellDiv.className = `game-cell ${cell.flipped ? 'flipped' : ''} 
-                p-4 bg-white rounded shadow cursor-pointer 
-                hover:bg-gray-50 transition-colors duration-200`;
-            cellDiv.textContent = cell.question;
-            cellDiv.dataset.index = index;
-
-            // 添加点击事件
-            cellDiv.addEventListener('click', () => this.handleCellClick(index));
+            cellDiv.className = `p-4 rounded shadow cursor-pointer transition-all duration-200 ${
+                cell.flipped 
+                    ? 'bg-indigo-100 text-indigo-900' 
+                    : 'bg-white hover:bg-gray-50'
+            }`;
+            cellDiv.textContent = cell.flipped ? cell.question : '点击查看题目';
+            cellDiv.onclick = () => this.handleCellClick(index);
 
             gameBoard.appendChild(cellDiv);
         });
-
-        console.log('游戏板渲染完成');
+        console.log('界面更新完成');
     }
 
-    // 添加处理格子点击的方法
     async handleCellClick(index) {
         console.log('格子点击:', index);
         if (this.isBingo || this.board[index].flipped) {
@@ -83,7 +152,7 @@ class BingoGame {
 
         // 翻转格子
         this.board[index].flipped = true;
-        this.renderBoard();
+        this.updateUI();
 
         // 检查是否完成 Bingo
         if (this.checkBingo()) {
@@ -127,88 +196,6 @@ class BingoGame {
                 this.saveProgress();
             }
         }, 60000);
-    }
-
-    async initGame() {
-        try {
-            // 再次检查用户信息
-            if (!this.currentUser || !this.currentUser.team_name) {
-                console.error('用户信息无效:', this.currentUser);
-                window.location.href = '../index.html';
-                return;
-            }
-
-            console.log('开始初始化游戏，团队名称:', this.currentUser.team_name);
-
-            // 更新界面显示
-            const teamInfoElement = document.getElementById('teamInfo');
-            if (teamInfoElement) {
-                teamInfoElement.textContent = `团队：${this.currentUser.team_name}`;
-            }
-
-            // 获取游戏设置
-            const settings = await window.API.getGameSettings();
-            this.size = settings.gridSize;
-            console.log('游戏设置:', settings);
-
-            // 检查是否已完成
-            const isCompleted = await window.API.checkGameCompletion(this.currentUser.team_name);
-            if (isCompleted) {
-                console.log('游戏已完成');
-                this.isBingo = true;
-                const bingoModal = document.getElementById('bingoModal');
-                if (bingoModal) {
-                    bingoModal.classList.remove('hidden');
-                }
-                return;
-            }
-
-            // 尝试恢复进度
-            const savedProgress = await window.API.getGameProgress(this.currentUser.team_name);
-            console.log('保存的进度:', savedProgress);
-
-            if (savedProgress) {
-                this.board = savedProgress.board;
-                this.startTime = savedProgress.startTime;
-                this.totalPlayTime = savedProgress.totalPlayTime || 0;
-                this.lastSaveTime = savedProgress.lastSaveTime;
-                console.log('已恢复保存的进度');
-            } else {
-                console.log('没有找到保存的进度，创建新游戏');
-                await this.createNewGame();
-            }
-
-            this.renderBoard();
-            this.setupAutoSave();
-        } catch (error) {
-            console.error('初始化游戏失败:', error);
-            alert('初始化游戏失败，请刷新页面重试');
-        }
-    }
-
-    // 添加创建新游戏的方法
-    async createNewGame() {
-        try {
-            // 获取随机题目
-            const questions = await window.API.getRandomQuestions(this.size * this.size);
-            
-            // 创建新的游戏板
-            this.board = questions.map(q => ({
-                question: q.question,
-                flipped: false
-            }));
-            
-            // 重置时间
-            this.startTime = Date.now();
-            this.totalPlayTime = 0;
-            this.lastSaveTime = Date.now();
-            
-            // 保存初始进度
-            await this.saveProgress();
-        } catch (error) {
-            console.error('创建新游戏失败:', error);
-            throw error;
-        }
     }
 
     // 添加检查 Bingo 的方法
