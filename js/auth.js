@@ -1,5 +1,19 @@
 class Auth {
     constructor() {
+        // 禁用 i18next 调试信息
+        if (window.i18next) {
+            window.i18next.init({
+                debug: false,
+                lng: 'zh-CN',
+                fallbackLng: 'zh-CN',
+                resources: {
+                    'zh-CN': {
+                        translation: {}
+                    }
+                }
+            });
+        }
+
         this.errorLogs = [];
         this.logError('Auth 类初始化开始');
         
@@ -141,6 +155,11 @@ localStorage.removeItem('authErrorLogs');
 
 // 初始化认证
 window.addEventListener('DOMContentLoaded', () => {
+    // 禁用所有 i18next 相关的控制台输出
+    if (window.i18next) {
+        window.i18next.options.debug = false;
+    }
+    
     console.log('DOM加载完成，初始化Auth');
     window.auth = new Auth();
 }); 
