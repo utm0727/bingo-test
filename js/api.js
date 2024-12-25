@@ -269,19 +269,25 @@ function initAPI() {
                     
                     // 如果有新的提交包含文件，先上传文件
                     for (const cell of progress.board) {
-                        if (cell.submission?.file && !cell.submission.filePath) {
+                        if (cell.submission?.file) {
                             try {
-                                cell.submission.filePath = await this.uploadTaskFile(
+                                const fileResult = await this.uploadTaskFile(
                                     teamName,
                                     cell.id,
                                     cell.submission.file
                                 );
+                                
+                                // 保存文件信息
+                                cell.submission.filePath = fileResult.path;
+                                cell.submission.fileUrl = fileResult.url;
+                                cell.submission.fileType = cell.submission.file.type;
+                                
+                                // 删除原始文件对象
+                                delete cell.submission.file;
                             } catch (error) {
                                 console.error('文件上传失败:', error);
                                 // 继续保存其他数据
                             }
-                            // 删除临时文件对象
-                            delete cell.submission.file;
                         }
                     }
 
@@ -505,38 +511,24 @@ function initAPI() {
             // 添加文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
-                    await this.initStorage();
-
-                    // 创建更简单的文件路径
                     const fileExt = file.name.split('.').pop();
-                    const fileName = `${teamName}_${taskId}_${Date.now()}.${fileExt}`;
+                    const fileName = `${teamName}/${taskId}/${Date.now()}.${fileExt}`;
 
-                    // 尝试直接上传
                     const { data, error } = await supabaseClient.storage
-                        .from('task-submissions')
-                        .upload(fileName, file, {
-                            cacheControl: '3600',
-                            upsert: true
-                        });
+                        .from('submissions')
+                        .upload(fileName, file);
 
-                    if (error) {
-                        // 如果是存储桶不存在错误，尝试使用其他存储桶
-                        if (error.statusCode === 404 && error.message === 'Bucket not found') {
-                            // 尝试使用默认存储桶 'public'
-                            const { data: publicData, error: publicError } = await supabaseClient.storage
-                                .from('public')
-                                .upload(fileName, file, {
-                                    cacheControl: '3600',
-                                    upsert: true
-                                });
+                    if (error) throw error;
 
-                            if (publicError) throw publicError;
-                            return publicData.path;
-                        }
-                        throw error;
-                    }
+                    // 获取文件的公共URL
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('submissions')
+                        .getPublicUrl(data.path);
 
-                    return data.path;
+                    return {
+                        path: data.path,
+                        url: publicUrl
+                    };
                 } catch (error) {
                     console.error('上传文件失败:', error);
                     throw error;
@@ -578,22 +570,39 @@ function initAPI() {
 
                     if (listError) {
                         console.error('检查存储桶失败:', listError);
-                        // 如果是权限错误，尝试直接使用存储桶
-                        return true; // 继续尝试使用存储桶
+                        throw listError;
                     }
 
-                    const bucketExists = buckets?.some(b => b.name === 'task-submissions');
+                    const bucketExists = buckets?.some(b => b.name === 'submissions');
                     
                     if (!bucketExists) {
-                        console.log('存储桶不存在，尝试使用默认存储桶');
-                        return true; // 使用默认存储桶
+                        // 创建存储桶
+                        const { error: createError } = await supabaseClient
+                            .storage
+                            .createBucket('submissions', {
+                                public: false,
+                                allowedMimeTypes: ['image/*', 'video/*']
+                            });
+
+                        if (createError) throw createError;
+                        console.log('存储桶创建成功');
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
-                    return true; // 继续尝试使用存储桶
+                    throw error;
                 }
+            },
+
+            // 添加文件转换方法
+            async fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
             }
         };
 
