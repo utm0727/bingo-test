@@ -210,10 +210,26 @@
     </div>
 
     <!-- 先加载 Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 添加调试代码 -->
+    <script>
+        console.log('检查 Supabase 是否加载:', {
+            supabase: window.supabase,
+            hasCreateClient: window.supabase?.createClient
+        });
+    </script>
 
     <!-- 然后加载 API -->
     <script src="../js/api.js"></script>
+
+    <!-- 添加调试代码 -->
+    <script>
+        console.log('检查 API 是否加载:', {
+            API: window.API,
+            hasAdminLogin: window.API?.adminLogin
+        });
+    </script>
 
     <!-- 最后加载管理员脚本 -->
     <script src="../js/admin.js"></script>

@@ -2,13 +2,20 @@
 function initAPI() {
     // 检查 Supabase 是否已加载
     if (typeof window.supabase === 'undefined') {
-        console.log('等待 Supabase 加载...');
+        console.log('等待 Supabase 加载...', {
+            supabase: window.supabase,
+            location: window.location.pathname
+        });
         setTimeout(initAPI, 100);
         return;
     }
 
     try {
-        console.log('开始初始化 Supabase 客户端...');
+        console.log('开始初始化 Supabase 客户端...', {
+            hasCreateClient: !!window.supabase.createClient,
+            location: window.location.pathname
+        });
+        
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
@@ -294,7 +301,7 @@ function initAPI() {
             // 管理员登录方法
             async adminLogin(username, password) {
                 try {
-                    console.log('正在尝试管理员登录:', { username });
+                    console.log('正在尝试管理员登录:', { username, password }); // 添加密码日志用于调试
                     const { data, error } = await supabaseClient
                         .from('admins')
                         .select('*')
@@ -308,10 +315,16 @@ function initAPI() {
                         return false;
                     }
 
-                    if (data && data.password === password) {
+                    const loginSuccess = data && data.password === password;
+                    console.log('密码验证结果:', {
+                        hasData: !!data,
+                        passwordMatch: loginSuccess,
+                        dbPassword: data?.password,
+                        inputPassword: password
+                    });
+
+                    if (loginSuccess) {
                         console.log('密码验证成功');
-                        sessionStorage.setItem('isAdmin', 'true');
-                        sessionStorage.setItem('adminLastActivity', Date.now().toString());
                         return true;
                     }
 
@@ -333,6 +346,12 @@ function initAPI() {
         setTimeout(initAPI, 100);
     }
 }
+
+// 添加一些调试信息
+console.log('API.js 加载位置:', {
+    location: window.location.pathname,
+    script: document.currentScript?.src
+});
 
 // 立即开始初始化，不等待 DOMContentLoaded
 initAPI(); 
