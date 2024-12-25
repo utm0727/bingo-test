@@ -4,7 +4,8 @@ const supabase = createClient(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
 );
 
-const API = {
+// 改为全局变量
+window.API = {
     // 获取题目列表
     async getQuestions() {
         try {
@@ -136,6 +137,4 @@ const API = {
 };
 
 // 不再需要初始化本地存储
-// API.init();
-
-export default API; 
+// API.init(); 
