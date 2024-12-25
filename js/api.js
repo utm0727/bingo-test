@@ -431,6 +431,27 @@ function initAPI() {
                     console.error('获取可用格子大小失败:', error);
                     return [3]; // 默认至少返回 3x3
                 }
+            },
+
+            // 添加批量删除题目的方法
+            async batchDeleteQuestions(ids) {
+                try {
+                    console.log('正在批量删除题目:', ids);
+                    const { error } = await supabaseClient
+                        .from('questions')
+                        .delete()
+                        .in('id', ids);
+
+                    if (error) {
+                        console.error('批量删除题目失败:', error);
+                        throw error;
+                    }
+                    console.log('批量删除题目成功');
+                    return true;
+                } catch (error) {
+                    console.error('批量删除题目失败:', error);
+                    throw error;
+                }
             }
         };
 
