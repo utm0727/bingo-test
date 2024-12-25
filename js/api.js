@@ -205,6 +205,10 @@ const API = {
 
     // 获取游戏进度
     async getGameProgress(teamName) {
+        if (!teamName) {
+            console.error('teamName 不能为空');
+            return null;
+        }
         try {
             const key = `game-progress-${teamName}`;
             const progressData = localStorage.getItem(key);
