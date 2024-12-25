@@ -508,17 +508,22 @@ function initAPI() {
                 }
             },
 
-            // 修改文件上传方法，确保返回正确的路径
+            // 修改文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `${teamName}/${taskId}/${Date.now()}.${fileExt}`;
+                    // 简化文件名，避免特殊字符
+                    const fileExt = file.name.split('.').pop().toLowerCase();
+                    const timestamp = Date.now();
+                    const fileName = `${teamName}_${taskId}_${timestamp}.${fileExt}`;
 
                     console.log('开始上传文件:', {
                         fileName,
                         fileType: file.type,
                         fileSize: file.size
                     });
+
+                    // 先尝试初始化存储
+                    await this.initStorage();
 
                     const { data, error } = await supabaseClient.storage
                         .from('submissions')
@@ -532,13 +537,13 @@ function initAPI() {
                     console.log('文件上传成功:', data);
 
                     // 获取文件的公共URL
-                    const { data: { publicUrl } } = supabaseClient.storage
+                    const { data: urlData } = supabaseClient.storage
                         .from('submissions')
-                        .getPublicUrl(data.path);
+                        .getPublicUrl(fileName);  // 使用相同的文件名
 
                     return {
-                        path: data.path,  // 保存完整路径
-                        url: publicUrl
+                        path: fileName,  // 保存简化的路径
+                        url: urlData.publicUrl
                     };
                 } catch (error) {
                     console.error('上传文件失败:', error);
@@ -551,9 +556,19 @@ function initAPI() {
                 try {
                     console.log('正在获取文件URL:', filePath);
                     
-                    // 直接从 submissions 存储桶获取
+                    // 先尝试获取公共URL
+                    const { data: urlData } = supabaseClient.storage
+                        .from('submissions')
+                        .getPublicUrl(filePath);
+                        
+                    if (urlData?.publicUrl) {
+                        console.log('获取到公共URL:', urlData.publicUrl);
+                        return urlData.publicUrl;
+                    }
+
+                    // 如果公共URL不可用，尝试获取签名URL
                     const { data, error } = await supabaseClient.storage
-                        .from('submissions')  // 使用正确的存储桶名称
+                        .from('submissions')
                         .createSignedUrl(filePath, 3600);  // 1小时有效期
 
                     if (error) {
@@ -561,23 +576,26 @@ function initAPI() {
                         throw error;
                     }
 
-                    console.log('获取到文件URL:', data.signedUrl);
+                    console.log('获取到签名URL:', data.signedUrl);
                     return data.signedUrl;
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
                     
-                    // 尝试获取公共URL
-                    try {
-                        const { data: { publicUrl } } = supabaseClient.storage
-                            .from('submissions')
-                            .getPublicUrl(filePath);
-                            
-                        console.log('获取到公共URL:', publicUrl);
-                        return publicUrl;
-                    } catch (fallbackError) {
-                        console.error('获取公共URL也失败:', fallbackError);
-                        return null;
+                    // 如果文件路径包含斜杠，尝试获取最后一部分
+                    if (filePath.includes('/')) {
+                        const fileName = filePath.split('/').pop();
+                        try {
+                            const { data: retryData } = supabaseClient.storage
+                                .from('submissions')
+                                .getPublicUrl(fileName);
+                                
+                            console.log('使用简化路径获取到URL:', retryData.publicUrl);
+                            return retryData.publicUrl;
+                        } catch (retryError) {
+                            console.error('使用简化路径获取URL也失败:', retryError);
+                        }
                     }
+                    return null;
                 }
             },
 
