@@ -328,26 +328,44 @@ function initAPI() {
                 }
             },
 
-            // 添加更新分数方法
-            async updateScore(teamName, score) {
+            // 修改更新分数方法
+            async updateScore(teamName, completionTime) {
                 try {
-                    const { error } = await supabaseClient
-                        .from('scores')
-                        .upsert([
-                            {
-                                team_name: teamName,
-                                score: score,
-                                created_at: new Date().toISOString()
-                            }
-                        ], {
-                            onConflict: 'team_name'
-                        });
+                    console.log('更新分数:', { teamName, completionTime });
 
-                    if (error) throw error;
+                    // 先检查是否已有记录
+                    const { data: existingScore } = await supabaseClient
+                        .from('leaderboard')
+                        .select('*')
+                        .eq('team_name', teamName)
+                        .single();
+
+                    if (existingScore) {
+                        // 如果已有记录，使用 update
+                        const { error: updateError } = await supabaseClient
+                            .from('leaderboard')
+                            .update({ completion_time: completionTime })
+                            .eq('team_name', teamName);
+
+                        if (updateError) throw updateError;
+                    } else {
+                        // 如果没有记录，使用 insert
+                        const { error: insertError } = await supabaseClient
+                            .from('leaderboard')
+                            .insert([{
+                                team_name: teamName,
+                                completion_time: completionTime
+                            }]);
+
+                        if (insertError) throw insertError;
+                    }
+
+                    console.log('分数更新成功');
                     return true;
                 } catch (error) {
                     console.error('更新分数失败:', error);
-                    throw error;
+                    // 不抛出错误，让游戏继续进行
+                    return false;
                 }
             },
 
