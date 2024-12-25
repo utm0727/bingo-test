@@ -27,31 +27,63 @@ function initAPI() {
             // 登录相关方法
             async login(teamName, leaderName) {
                 try {
+                    console.log('API.login 开始:', { teamName, leaderName });
+                    
+                    // 先检查参数
+                    if (!teamName || !leaderName) {
+                        console.error('登录参数无效');
+                        return null;
+                    }
+
                     const { data: existingUser, error: selectError } = await supabaseClient
                         .from('users')
                         .select()
                         .eq('team_name', teamName)
                         .single();
 
+                    console.log('查询现有用户结果:', { existingUser, selectError });
+
                     if (selectError && selectError.code !== 'PGRST116') {
+                        console.error('查询用户失败:', selectError);
                         throw selectError;
                     }
 
+                    let user;
                     if (existingUser) {
-                        return existingUser;
+                        console.log('找到现有用户');
+                        user = existingUser;
+                    } else {
+                        console.log('创建新用户');
+                        const { data: newUser, error: insertError } = await supabaseClient
+                            .from('users')
+                            .insert([{
+                                team_name: teamName,
+                                leader_name: leaderName,
+                                created_at: new Date().toISOString()
+                            }])
+                            .select()
+                            .single();
+
+                        if (insertError) {
+                            console.error('创建用户失败:', insertError);
+                            throw insertError;
+                        }
+                        user = newUser;
                     }
 
-                    const { data: newUser, error: insertError } = await supabaseClient
-                        .from('users')
-                        .insert([{
-                            team_name: teamName,
-                            leader_name: leaderName
-                        }])
-                        .select()
-                        .single();
+                    // 确保返回的用户数据完整
+                    if (!user || !user.team_name) {
+                        console.error('用户数据不完整:', user);
+                        return null;
+                    }
 
-                    if (insertError) throw insertError;
-                    return newUser;
+                    console.log('登录成功，返回用户数据:', user);
+                    return {
+                        id: user.id,
+                        team_name: user.team_name,
+                        leader_name: user.leader_name,
+                        created_at: user.created_at
+                    };
                 } catch (error) {
                     console.error('登录失败:', error);
                     throw error;
