@@ -158,28 +158,42 @@ function initAPI() {
                 }
             },
 
-            // 重置所有数据
+            // 修改重置所有数据的方法
             async resetAllData() {
                 try {
+                    console.log('开始重置所有数据...');
+                    
                     // 删除所有游戏相关数据，但保留管理员账户
                     const tables = ['scores', 'game_progress', 'questions'];
+                    
                     for (const table of tables) {
+                        console.log(`正在清空 ${table} 表...`);
                         const { error } = await supabaseClient
                             .from(table)
                             .delete()
-                            .neq('id', 0); // 删除所有记录
+                            .not('id', 'is', null); // 删除所有记录
 
-                        if (error) throw error;
+                        if (error) {
+                            console.error(`清空 ${table} 表失败:`, error);
+                            throw error;
+                        }
+                        console.log(`${table} 表已清空`);
                     }
 
-                    // 清除存储的文件
-                    const { error: storageError } = await supabaseClient
-                        .storage
-                        .from('game-files')
-                        .remove(['*']);
+                    // 重置游戏设置
+                    const { error: settingsError } = await supabaseClient
+                        .from('game_settings')
+                        .upsert([{
+                            id: 1,
+                            grid_size: 5 // 重置为默认值
+                        }]);
 
-                    if (storageError) throw storageError;
+                    if (settingsError) {
+                        console.error('重置游戏设置失败:', settingsError);
+                        throw settingsError;
+                    }
 
+                    console.log('所有数据已重置');
                     return true;
                 } catch (error) {
                     console.error('重置数据失败:', error);
