@@ -78,11 +78,32 @@
                     return;
                 }
 
+                console.log('开始加载排行榜...');
                 const leaderboard = await window.API.getLeaderboard();
+                console.log('获取到的排行榜数据:', leaderboard);
+
                 const tbody = document.getElementById('leaderboardBody');
+                if (!tbody) {
+                    console.error('找不到排行榜表格体');
+                    return;
+                }
+
                 tbody.innerHTML = '';
 
+                if (!leaderboard || leaderboard.length === 0) {
+                    console.log('没有排行榜数据');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">
+                                暂无数据
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
                 leaderboard.forEach((entry, index) => {
+                    console.log('处理排行榜条目:', entry);
                     const tr = document.createElement('tr');
                     const minutes = Math.floor(entry.completion_time / 60000);
                     const seconds = Math.floor((entry.completion_time % 60000) / 1000);
@@ -102,6 +123,16 @@
                 });
             } catch (error) {
                 console.error('加载排行榜失败:', error);
+                const tbody = document.getElementById('leaderboardBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center text-red-500">
+                                加载失败，请刷新页面重试
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
 

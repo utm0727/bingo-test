@@ -218,20 +218,25 @@ function initAPI() {
             // 获取排行榜
             async getLeaderboard() {
                 try {
-                    console.log('获取排行榜数据');
+                    console.log('开始获取排行榜数据');
                     
                     // 从 leaderboard 表获取数据
                     const { data, error } = await supabaseClient
-                        .from('leaderboard')  // 使用正确的表名
-                        .select(`
-                            team_name,
-                            completion_time
-                        `)
-                        .order('completion_time', { ascending: true });  // 按完成时间升序排序
+                        .from('leaderboard')
+                        .select('*')
+                        .order('completion_time', { ascending: true });
 
                     if (error) {
-                        console.error('获取排行榜失败:', error);
+                        console.error('获取排行榜数据失败:', error);
                         throw error;
+                    }
+
+                    console.log('原始排行榜数据:', data);
+
+                    // 确保数据存在且是数组
+                    if (!data || !Array.isArray(data)) {
+                        console.log('没有找到排行榜数据');
+                        return [];
                     }
 
                     // 格式化数据
@@ -240,10 +245,11 @@ function initAPI() {
                         completion_time: entry.completion_time
                     }));
 
-                    console.log('获取到的排行榜数据:', formattedData);
+                    console.log('格式化后的排行榜数据:', formattedData);
                     return formattedData;
                 } catch (error) {
                     console.error('获取排行榜失败:', error);
+                    // 返回空数组而不是抛出错误
                     return [];
                 }
             },
@@ -422,7 +428,7 @@ function initAPI() {
                     }
 
                     const loginSuccess = data && data.password === password;
-                    console.log('密码验证结果:', {
+                    console.log('���码验证结果:', {
                         hasData: !!data,
                         passwordMatch: loginSuccess,
                         dbPassword: data?.password,
