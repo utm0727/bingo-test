@@ -14,9 +14,14 @@ class AdminPanel {
         
         // 等待 API 准备好再初始化
         if (window.API) {
+            console.log('API 已就绪，开始初始化管理面板');
             this.init();
         } else {
-            window.addEventListener('APIReady', () => this.init());
+            console.log('等待 API 准备...');
+            window.addEventListener('APIReady', () => {
+                console.log('API 就绪，开始初始化管理面板');
+                this.init();
+            });
         }
     }
 
@@ -241,7 +246,7 @@ class AdminPanel {
 
     // 开始定时刷新排行榜
     startLeaderboardRefresh() {
-        // 每30秒��新一次排行榜
+        // 每30秒新一次排行榜
         this.leaderboardInterval = setInterval(() => {
             this.refreshLeaderboard();
         }, 30000);
@@ -424,7 +429,7 @@ function handleLogout() {
     }
 }
 
-// 初���化管理员面板
+// 初始化管理员面板
 window.adminPanel = new AdminPanel();
 
 // 添加全局折叠面板控制函数
