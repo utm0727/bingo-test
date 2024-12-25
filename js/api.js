@@ -269,19 +269,25 @@ function initAPI() {
                     
                     // 如果有新的提交包含文件，先上传文件
                     for (const cell of progress.board) {
-                        if (cell.submission?.file) {
+                        if (cell?.submission?.file) {  // 添加更严格的检查
                             try {
+                                console.log('处理单元格文件:', {
+                                    cellId: cell.id,
+                                    hasFile: !!cell.submission.file,
+                                    fileType: cell.submission.file?.type
+                                });
+
                                 const fileResult = await this.uploadTaskFile(
                                     teamName,
                                     cell.id,
                                     cell.submission.file
                                 );
                                 
-                                // 保存完整的文件信息，确保包含所有必要信息
+                                // 保存完整的文件信息
                                 cell.submission = {
                                     ...cell.submission,
-                                    filePath: fileResult.path,  // 使用简单的文件名
-                                    fileUrl: fileResult.url,    // 保存完整的URL
+                                    filePath: fileResult.path,
+                                    fileUrl: fileResult.url,
                                     fileType: fileResult.fileType,
                                     fileName: fileResult.fileName,
                                     uploadTime: fileResult.uploadTime
@@ -290,7 +296,10 @@ function initAPI() {
                                 // 删除原始文件对象
                                 delete cell.submission.file;
                             } catch (error) {
-                                console.error('文件上传失败:', error);
+                                console.error('文件上传失败:', error, {
+                                    cellId: cell.id,
+                                    teamName: teamName
+                                });
                             }
                         }
                     }
@@ -513,6 +522,18 @@ function initAPI() {
             // 修改文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
+                    // 添加参数验证
+                    if (!teamName || !taskId || !file) {
+                        console.error('无效的参数:', { teamName, taskId, file });
+                        throw new Error('缺少必要的参数');
+                    }
+
+                    // 验证文件对象
+                    if (!(file instanceof File)) {
+                        console.error('无效的文件对象:', file);
+                        throw new Error('无效的文件对象');
+                    }
+
                     // 简化文件名，避免特殊字符
                     const fileExt = file.name.split('.').pop().toLowerCase();
                     const timestamp = Date.now();
@@ -522,8 +543,12 @@ function initAPI() {
                     console.log('开始上传文件:', {
                         fileName,
                         fileType: file.type,
-                        fileSize: file.size
+                        fileSize: file.size,
+                        originalName: file.name
                     });
+
+                    // 确保已初始化
+                    await this.initStorage();
 
                     // 上传文件
                     const { data, error } = await supabaseClient.storage
@@ -534,7 +559,10 @@ function initAPI() {
                             contentType: file.type
                         });
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('上传失败:', error);
+                        throw error;
+                    }
 
                     console.log('文件上传成功:', data);
 
@@ -545,9 +573,8 @@ function initAPI() {
 
                     console.log('获取到的公共URL:', publicUrl);
 
-                    // 保存完整信息
                     return {
-                        path: fileName,  // 保存简单的文件名
+                        path: fileName,
                         url: publicUrl,
                         fileType: file.type,
                         fileName: file.name,
@@ -630,39 +657,24 @@ function initAPI() {
 
                     if (listError) {
                         console.error('检查存储桶失败:', listError);
-                        throw listError;
+                        // 如果是权限错误，继续使用默认存储桶
+                        return true;
                     }
 
-                    const bucketExists = buckets?.some(b => b.name === 'submissions');
-                    
-                    if (!bucketExists) {
-                        // 创建存储桶，设置为公开
-                        const { error: createError } = await supabaseClient
-                            .storage
-                            .createBucket('submissions', {
-                                public: true,  // 修改为公开
-                                allowedMimeTypes: ['image/*', 'video/*']
-                            });
+                    // 检查 submissions 存储桶
+                    const submissionsBucket = buckets?.find(b => b.name === 'submissions');
+                    console.log('找到的存储桶:', submissionsBucket);
 
-                        if (createError) throw createError;
-                        console.log('存储桶创建成功');
-                    } else {
-                        // 如果存储桶已存在，更新为公开
-                        const { error: updateError } = await supabaseClient
-                            .storage
-                            .updateBucket('submissions', {
-                                public: true
-                            });
-
-                        if (updateError) {
-                            console.error('更新存储桶失败:', updateError);
-                        }
+                    if (!submissionsBucket) {
+                        console.log('存储桶不存在，使用默认存储桶');
+                        return true;
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
-                    throw error;
+                    // 如果出错，继续使用默认存储桶
+                    return true;
                 }
             },
 
