@@ -515,10 +515,13 @@ class AdminPanel {
         });
     }
 
-    // 处理批量删除
+    // 修改处理批量删除的方法
     async handleBatchDelete() {
         const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
-        if (checkedBoxes.length === 0) return;
+        if (checkedBoxes.length === 0) {
+            alert('请先选择要删除的题目');
+            return;
+        }
 
         const confirmMessage = checkedBoxes.length === 1 
             ? '确定要删除选中的题目吗？' 
@@ -529,12 +532,10 @@ class AdminPanel {
         try {
             // 获取所有选中题目的 ID
             const questionIds = Array.from(checkedBoxes).map(cb => cb.dataset.id);
-
-            // 逐个删除选中的题目
-            for (const id of questionIds) {
-                await window.API.deleteQuestion(id);
-            }
-
+            
+            // 使用新的批量删除方法一次性删除所有选中的题目
+            await window.API.batchDeleteQuestions(questionIds);
+            
             // 重新加载题目列表
             await this.loadQuestions();
             alert('选中的题目已删除');
