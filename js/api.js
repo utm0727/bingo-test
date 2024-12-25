@@ -1,11 +1,45 @@
 // 初始化 Supabase 客户端
-const supabase = createClient(
+const supabase = window.supabase.createClient(
     'https://vwkkwthrkqyjmirsgqoo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
 );
 
 // 改为全局变量
 window.API = {
+    // 登录相关方法
+    async login(teamName, leaderName) {
+        try {
+            const { data: existingUser, error: selectError } = await supabase
+                .from('users')
+                .select()
+                .eq('team_name', teamName)
+                .single();
+
+            if (selectError && selectError.code !== 'PGRST116') {
+                throw selectError;
+            }
+
+            if (existingUser) {
+                return existingUser;
+            }
+
+            const { data: newUser, error: insertError } = await supabase
+                .from('users')
+                .insert([{
+                    team_name: teamName,
+                    leader_name: leaderName
+                }])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+            return newUser;
+        } catch (error) {
+            console.error('登录失败:', error);
+            throw error;
+        }
+    },
+
     // 获取题目列表
     async getQuestions() {
         try {
