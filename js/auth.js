@@ -4,14 +4,26 @@ class Auth {
         this.loginForm = document.getElementById('loginForm');
         console.log('登录表单元素:', this.loginForm);
         
-        // 检查是否已登录
+        // 检查是否已登录，并确保数据完整性
         const currentUser = localStorage.getItem('currentUser');
         console.log('当前存储的用户信息:', currentUser);
         
         if (currentUser) {
-            console.log('检测到已登录用户，准备重定向到游戏页面');
-            window.location.replace('pages/game.html');
-            return;
+            try {
+                // 验证用户数据的完整性
+                const userData = JSON.parse(currentUser);
+                if (userData && userData.team_name) {
+                    console.log('检测到有效的用户信息:', userData);
+                    window.location.replace('pages/game.html');
+                    return;
+                } else {
+                    console.warn('用户数据无效，清除存储');
+                    localStorage.removeItem('currentUser');
+                }
+            } catch (error) {
+                console.error('解析用户数据失败，清除存储:', error);
+                localStorage.removeItem('currentUser');
+            }
         }
 
         // 等待 API 准备好再初始化
@@ -25,7 +37,6 @@ class Auth {
                 this.init();
             });
         }
-        console.log('Auth 类初始化完成');
     }
 
     init() {
@@ -78,15 +89,32 @@ class Auth {
             const user = await window.API.login(teamNameValue, leaderNameValue);
             console.log('API 登录响应:', user);
             
-            if (user) {
-                console.log('登录成功，保存用户信息');
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                console.log('用户信息已保存到 localStorage');
+            if (user && user.team_name) {  // 确保返回的用户数据包含 team_name
+                console.log('登录成功，保存用户信息:', user);
                 
-                console.log('准备重定向到游戏页面');
-                window.location.replace('pages/game.html');
+                // 确保保存完整的用户信息
+                const userData = {
+                    team_name: user.team_name,
+                    leader_name: user.leader_name,
+                    id: user.id,
+                    created_at: user.created_at
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(userData));
+                console.log('用户信息已保存到 localStorage:', userData);
+                
+                // 验证保存是否成功
+                const savedData = localStorage.getItem('currentUser');
+                console.log('验证保存的数据:', savedData);
+                
+                if (savedData) {
+                    console.log('准备重定向到游戏页面');
+                    window.location.replace('pages/game.html');
+                } else {
+                    throw new Error('用户数据保存失败');
+                }
             } else {
-                console.error('登录失败：API 未返回用户信息');
+                console.error('登录失败：无效的用户数据', user);
                 alert('登录失败，请重试');
             }
         } catch (error) {
@@ -101,17 +129,12 @@ class Auth {
     }
 }
 
-// 添加错误处理
-window.onerror = function(msg, url, line, col, error) {
-    console.error('全局错误:', {
-        message: msg,
-        url: url,
-        line: line,
-        column: col,
-        error: error
-    });
-    return false;
-};
+// 初始化前清理可能的无效数据
+if (!localStorage.getItem('currentUser')) {
+    console.log('清理会话数据');
+    localStorage.clear();
+    sessionStorage.clear();
+}
 
 console.log('准备初始化 Auth 类');
 window.auth = new Auth();
