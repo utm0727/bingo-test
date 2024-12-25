@@ -266,22 +266,29 @@ function initAPI() {
             async saveGameProgress(teamName, progress) {
                 try {
                     console.log('保存游戏进度:', { teamName, progress });
+                    
+                    // 如果有新的提交包含文件，先上传文件
+                    for (const cell of progress.board) {
+                        if (cell.submission?.file && !cell.submission.filePath) {
+                            cell.submission.filePath = await this.uploadTaskFile(
+                                teamName,
+                                cell.id,
+                                cell.submission.file
+                            );
+                            // 删除文件对象，只保存路径
+                            delete cell.submission.file;
+                        }
+                    }
+
                     const { error } = await supabaseClient
                         .from('game_progress')
-                        .upsert({
+                        .upsert([{
                             team_name: teamName,
-                            progress: progress,
-                            updated_at: new Date().toISOString()
-                        }, {
-                            onConflict: 'team_name'
-                        });
+                            progress: progress
+                        }]);
 
-                    if (error) {
-                        console.error('保存游戏进度失败:', error);
-                        throw error;
-                    }
+                    if (error) throw error;
                     console.log('游戏进度保存成功');
-                    return true;
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);
                     throw error;
@@ -468,6 +475,37 @@ function initAPI() {
                 } catch (error) {
                     console.error('批量删除题目失败:', error);
                     throw error;
+                }
+            },
+
+            // 添加文件上传方法
+            async uploadTaskFile(teamName, taskId, file) {
+                try {
+                    const fileName = `${teamName}/${taskId}/${Date.now()}_${file.name}`;
+                    const { data, error } = await supabaseClient.storage
+                        .from('task-submissions')
+                        .upload(fileName, file);
+
+                    if (error) throw error;
+                    return data.path;
+                } catch (error) {
+                    console.error('上传文件失败:', error);
+                    throw error;
+                }
+            },
+
+            // 添加获取提交文件URL的方法
+            async getSubmissionFileUrl(filePath) {
+                try {
+                    const { data, error } = await supabaseClient.storage
+                        .from('task-submissions')
+                        .createSignedUrl(filePath, 3600); // 1小时有效期
+
+                    if (error) throw error;
+                    return data.signedUrl;
+                } catch (error) {
+                    console.error('获取文件URL失败:', error);
+                    return null;
                 }
             }
         };

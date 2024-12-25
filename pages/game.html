@@ -23,6 +23,43 @@
         </div>
     </div>
 
+    <!-- 任务提交对话框 -->
+    <div id="taskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg w-full max-w-lg">
+            <h2 class="text-2xl font-bold mb-4">提交任务</h2>
+            <p id="taskQuestion" class="mb-4 text-gray-700"></p>
+            
+            <form id="taskForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        文字说明（必填）
+                    </label>
+                    <textarea id="taskDescription" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        上传图片/视频（可选）
+                    </label>
+                    <input type="file" id="taskFile" accept="image/*,video/*"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="window.game.closeTaskModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                        提交
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Bingo 完成提示 -->
     <div id="bingoModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg">

@@ -141,24 +141,36 @@ class BingoGame {
             const cellDiv = document.createElement('div');
             
             // 添加基础样式
-            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex items-center justify-center text-center';
+            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center text-center';
             
             // 根据状态添加额外样式
-            if (cell.flipped) {
+            if (cell.completed) {
+                cellDiv.classList.add('bg-green-100', 'text-green-900');
+                let content = `
+                    <div class="text-sm mb-2">${cell.question}</div>
+                    <div class="text-xs mb-1">✓ 已完成</div>
+                    <div class="text-xs">${cell.submission.description}</div>
+                `;
+                if (cell.submission.filePath) {
+                    content += `<div class="text-xs mt-1">
+                        <a href="#" onclick="window.game.viewSubmission(${index})" class="text-indigo-600 hover:text-indigo-500">
+                            查看提交文件
+                        </a>
+                    </div>`;
+                }
+                cellDiv.innerHTML = content;
+            } else if (cell.flipped) {
                 cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
-                cellDiv.textContent = cell.question || '题目加载失败';
-                console.log('显示已翻转格子:', index, cell);
+                cellDiv.textContent = cell.question;
             } else {
                 cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
                 cellDiv.textContent = '点击查看题目';
-                console.log('显示未翻转格子:', index);
             }
 
             // 添加点击事件
             cellDiv.onclick = (e) => {
                 e.preventDefault();
-                if (!cell.flipped && !this.isBingo) {
-                    console.log('触发格子点击:', index);
+                if (!cell.completed && !this.isBingo) {
                     this.handleCellClick(index);
                 }
             };
@@ -171,32 +183,94 @@ class BingoGame {
 
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
-        if (this.isBingo || !this.board[index] || this.board[index].flipped) {
+        if (this.isBingo || !this.board[index] || this.board[index].completed) {
             return;
         }
 
-        try {
-            // 翻转格子
+        // 如果还没翻开，先翻开
+        if (!this.board[index].flipped) {
             this.board[index].flipped = true;
-            console.log('格子已翻转，新状态:', this.board[index]);
-
-            // 更新界面
             this.updateUI();
+            return;
+        }
+
+        // 如果已经翻开但还没完成，显示任务提交对话框
+        this.showTaskModal(index);
+    }
+
+    showTaskModal(index) {
+        const modal = document.getElementById('taskModal');
+        const question = document.getElementById('taskQuestion');
+        const form = document.getElementById('taskForm');
+        
+        if (!modal || !question || !form) return;
+
+        // 显示题目
+        question.textContent = this.board[index].question;
+
+        // 重置表单
+        form.reset();
+
+        // 保存当前操作的格子索引
+        this.currentTaskIndex = index;
+
+        // 绑定提交事件
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            await this.handleTaskSubmit();
+        };
+
+        // 显示对话框
+        modal.classList.remove('hidden');
+    }
+
+    closeTaskModal() {
+        const modal = document.getElementById('taskModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        this.currentTaskIndex = null;
+    }
+
+    async handleTaskSubmit() {
+        if (this.currentTaskIndex === null) return;
+
+        try {
+            const description = document.getElementById('taskDescription').value;
+            const fileInput = document.getElementById('taskFile');
+            const file = fileInput.files[0];
+
+            // 保存任务提交
+            const submission = {
+                description,
+                hasFile: !!file,
+                timestamp: new Date().toISOString()
+            };
+
+            // 如果有文件，添加到提交信息中
+            if (file) {
+                submission.file = file;  // 临时保存文件对象
+            }
+
+            // 更新格子状态
+            this.board[this.currentTaskIndex].completed = true;
+            this.board[this.currentTaskIndex].submission = submission;
+
+            // 保存进度（包括文件上传）
+            await this.saveProgress();
+
+            // 关闭对话框
+            this.closeTaskModal();
 
             // 检查是否完成 Bingo
             if (this.checkBingo()) {
                 this.isBingo = true;
                 const totalTime = Date.now() - this.startTime + this.totalPlayTime;
                 await this.handleGameComplete(totalTime);
-            } else {
-                // 保存进度
-                await this.saveProgress();
             }
         } catch (error) {
-            console.error('处理格子点击失败:', error);
-            // 恢复格子状态
-            this.board[index].flipped = false;
-            this.updateUI();
+            console.error('提交任务失败:', error);
+            alert('提交失败，请重试');
         }
     }
 
@@ -257,7 +331,8 @@ class BingoGame {
     // 添加检查线的方法
     checkLine(start, step, count) {
         for (let i = 0; i < count; i++) {
-            if (!this.board[start + i * step]?.flipped) return false;
+            const cell = this.board[start + i * step];
+            if (!cell?.completed) return false;
         }
         return true;
     }
@@ -284,6 +359,19 @@ class BingoGame {
         } catch (error) {
             console.error('处理游戏完成失败:', error);
             alert('保存游戏记录失败，请刷新页面重试');
+        }
+    }
+
+    // 添加查看提交文件的方法
+    async viewSubmission(index) {
+        const cell = this.board[index];
+        if (cell?.submission?.filePath) {
+            const url = await window.API.getSubmissionFileUrl(cell.submission.filePath);
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                alert('获取文件失败，请重试');
+            }
         }
     }
 }
