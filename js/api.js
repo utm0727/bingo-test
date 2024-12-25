@@ -1,13 +1,14 @@
 // 创建一个初始化函数
 function initAPI() {
     // 检查 Supabase 是否已加载
-    if (!window.supabase) {
+    if (typeof window.supabase === 'undefined') {
         console.log('等待 Supabase 加载...');
         setTimeout(initAPI, 100);
         return;
     }
 
     try {
+        console.log('开始初始化 Supabase 客户端...');
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
@@ -210,13 +211,15 @@ function initAPI() {
             }
         };
 
+        console.log('API 初始化完成');
         // 触发一个事件表示 API 已经准备好
         window.dispatchEvent(new Event('APIReady'));
-        console.log('API 初始化完成');
     } catch (error) {
         console.error('API 初始化失败:', error);
+        // 如果失败，稍后重试
+        setTimeout(initAPI, 100);
     }
 }
 
-// 开始初始化
-document.addEventListener('DOMContentLoaded', initAPI); 
+// 立即开始初始化，不等待 DOMContentLoaded
+initAPI(); 
