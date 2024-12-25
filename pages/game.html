@@ -47,7 +47,7 @@
     <script>
         // 等待 API 准备好再初始化游戏
         function initGame() {
-            if (window.API) {
+            if (window.API && window.API.getGameProgress) {
                 console.log('API 已就绪，初始化游戏...');
                 new BingoGame();
             } else {
