@@ -7,6 +7,14 @@ class Auth {
         const currentPath = window.location.pathname;
         this.logError('当前页面路径:', currentPath);
 
+        // 设置基础URL
+        this.baseUrl = currentPath.includes('/bingo-test/pages/') 
+            ? '../'
+            : currentPath.includes('/bingo-test/') 
+                ? './'
+                : '/bingo-test/';
+        this.logError('基础URL:', this.baseUrl);
+
         // 如果是游戏页面，检查登录状态
         if (currentPath.includes('/game.html')) {
             const currentUser = localStorage.getItem('currentUser');
@@ -106,14 +114,13 @@ class Auth {
                 };
                 
                 localStorage.setItem('currentUser', JSON.stringify(userData));
-                this.logError('用户信息已保存，准备跳转', {
-                    userData,
-                    targetUrl: this.baseUrl + 'pages/game.html'
-                });
+                
+                const gamePath = this.baseUrl + 'pages/game.html';
+                this.logError('用户信息已保存，准备跳转到:', gamePath);
                 
                 // 使用 setTimeout 确保日志保存后再跳转
                 setTimeout(() => {
-                    window.location.href = this.baseUrl + 'pages/game.html';
+                    window.location.href = gamePath;
                 }, 100);
             } else {
                 this.logError('登录失败：无效的用户数据', user);
