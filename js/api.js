@@ -94,15 +94,41 @@ function initAPI() {
             // 删除题目
             async deleteQuestion(id) {
                 try {
+                    console.log('正在删除题目:', id);
                     const { error } = await supabaseClient
                         .from('questions')
                         .delete()
                         .eq('id', id);
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('删除题目失败:', error);
+                        throw error;
+                    }
+                    console.log('题目删除成功');
                     return true;
                 } catch (error) {
                     console.error('删除题目失败:', error);
+                    throw error;
+                }
+            },
+
+            // 添加批量删除题目方法
+            async batchDeleteQuestions(ids) {
+                try {
+                    console.log('正在批量删除题目:', ids);
+                    const { error } = await supabaseClient
+                        .from('questions')
+                        .delete()
+                        .in('id', ids);
+
+                    if (error) {
+                        console.error('批量删除题目失败:', error);
+                        throw error;
+                    }
+                    console.log('批量删除题目成功');
+                    return true;
+                } catch (error) {
+                    console.error('批量删除题目失败:', error);
                     throw error;
                 }
             },
