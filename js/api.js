@@ -294,24 +294,28 @@ function initAPI() {
             // 管理员登录方法
             async adminLogin(username, password) {
                 try {
+                    console.log('正在尝试管理员登录:', { username });
                     const { data, error } = await supabaseClient
                         .from('admins')
-                        .select()
+                        .select('*')
                         .eq('username', username)
                         .single();
 
+                    console.log('查询结果:', { data, error });
+
                     if (error) {
-                        console.error('管理员登录失败:', error);
+                        console.error('管理员登录查询失败:', error);
                         return false;
                     }
 
                     if (data && data.password === password) {
-                        // 设置管理员会话
+                        console.log('密码验证成功');
                         sessionStorage.setItem('isAdmin', 'true');
                         sessionStorage.setItem('adminLastActivity', Date.now().toString());
                         return true;
                     }
 
+                    console.log('密码验证失败');
                     return false;
                 } catch (error) {
                     console.error('管理员登录失败:', error);
