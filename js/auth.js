@@ -4,3 +4,17 @@ const supabaseKey = 'your-anon-key';
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // 其他 auth.js 代码... 
+
+// 修改重定向路径为相对路径
+window.onload = async function() {
+    try {
+        const currentUser = sessionStorage.getItem('currentUser');
+        if (!currentUser) {
+            window.location.href = './login.html';  // 使用相对路径
+            return;
+        }
+        // ... 其他代码
+    } catch (error) {
+        console.error('初始化失败:', error);
+    }
+}; 
