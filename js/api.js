@@ -339,33 +339,51 @@ function initAPI() {
             // 修改更新管理员凭证的方法
             async updateAdminCredentials(username, password) {
                 try {
-                    console.log('正在更新管理员信息:', { username });
+                    console.log('开始更新管理员信息:', { username });
                     
-                    // 1. 删除所有现有管理员账户
-                    const { error: deleteError } = await supabaseClient
+                    // 1. 先检查是否有现有管理员账户
+                    const { data: existingAdmins, error: checkError } = await supabaseClient
                         .from('admins')
-                        .delete()
-                        .not('id', 'is', null); // 删除所有记录
+                        .select('*');
 
-                    if (deleteError) {
-                        console.error('删除现有管理员失败:', deleteError);
-                        throw deleteError;
+                    if (checkError) {
+                        console.error('检查现有管理员失败:', checkError);
+                        throw checkError;
                     }
 
-                    // 2. 插入新的管理员账户
-                    const { error: insertError } = await supabaseClient
+                    console.log('现有管理员账户:', existingAdmins);
+
+                    // 2. 如果有现有账户，删除它们
+                    if (existingAdmins && existingAdmins.length > 0) {
+                        const { error: deleteError } = await supabaseClient
+                            .from('admins')
+                            .delete()
+                            .eq('username', existingAdmins[0].username);
+
+                        if (deleteError) {
+                            console.error('删除现有管理员失败:', deleteError);
+                            throw deleteError;
+                        }
+                        console.log('成功删除现有管理员');
+                    }
+
+                    // 3. 插入新的管理员账户
+                    const { data: newAdmin, error: insertError } = await supabaseClient
                         .from('admins')
                         .insert([{
                             username: username,
-                            password: password
-                        }]);
+                            password: password,
+                            created_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
 
                     if (insertError) {
                         console.error('创建新管理员失败:', insertError);
                         throw insertError;
                     }
 
-                    console.log('管理员信息更新成功');
+                    console.log('成功创建新管理员:', newAdmin);
                     return true;
                 } catch (error) {
                     console.error('更新管理员信息失败:', error);
