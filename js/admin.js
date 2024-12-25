@@ -42,9 +42,13 @@ class AdminPanel {
 
     updateBatchDeleteButton() {
         if (!this.batchDeleteBtn) return;
-
         const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
         this.batchDeleteBtn.disabled = checkedBoxes.length === 0;
+        if (this.batchDeleteBtn.disabled) {
+            this.batchDeleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            this.batchDeleteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
     }
 
     handleSelectAll() {
@@ -241,9 +245,8 @@ class AdminPanel {
             questionsList.appendChild(questionDiv);
         });
 
-        // 初始化全选和批量删除按钮状态
-        this.updateSelectAllState();
-        this.updateBatchDeleteButton();
+        // 重新绑定全选和批量删除事件
+        this.bindSelectAllEvents();
     }
 
     async handleDeleteQuestion(id) {
@@ -449,24 +452,51 @@ class AdminPanel {
         }
     }
 
-    // 处理全选
-    handleSelectAll() {
-        const isChecked = this.selectAllCheckbox.checked;
+    // 添加新方法：绑定全选相关事件
+    bindSelectAllEvents() {
+        // 绑定全选复选框事件
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.removeEventListener('change', () => this.handleSelectAll());
+            this.selectAllCheckbox.addEventListener('change', () => {
+                const checkboxes = document.querySelectorAll('.question-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.selectAllCheckbox.checked;
+                });
+                this.updateBatchDeleteButton();
+            });
+        }
+
+        // 绑定批量删除按钮事件
+        if (this.batchDeleteBtn) {
+            this.batchDeleteBtn.removeEventListener('click', () => this.handleBatchDelete());
+            this.batchDeleteBtn.addEventListener('click', async () => {
+                const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
+                if (checkedBoxes.length === 0) return;
+
+                if (!confirm(`确定要删除选中的 ${checkedBoxes.length} 个题目吗？`)) return;
+
+                try {
+                    const ids = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+                    for (const id of ids) {
+                        await window.API.deleteQuestion(id);
+                    }
+                    await this.loadQuestions();
+                    alert('选中的题目已删除');
+                } catch (error) {
+                    console.error('批量删除失败:', error);
+                    alert('删除失败，请重试');
+                }
+            });
+        }
+
+        // 绑定单个复选框的变化事件
         const checkboxes = document.querySelectorAll('.question-checkbox');
-        
         checkboxes.forEach(checkbox => {
-            checkbox.checked = isChecked;
+            checkbox.addEventListener('change', () => {
+                this.updateSelectAllState();
+                this.updateBatchDeleteButton();
+            });
         });
-        
-        this.updateBatchDeleteButton();
-    }
-
-    // 更新批量删除按钮状态
-    updateBatchDeleteButton() {
-        if (!this.batchDeleteBtn) return;
-
-        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
-        this.batchDeleteBtn.disabled = checkedBoxes.length === 0;
     }
 
     // 处理批量删除
