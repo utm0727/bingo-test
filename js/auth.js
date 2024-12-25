@@ -1,66 +1,28 @@
 class Auth {
     constructor() {
-        // 添加错误日志数组
         this.errorLogs = [];
         this.logError('Auth 类初始化开始');
         
-        this.loginForm = document.getElementById('loginForm');
-        this.logError('登录表单元素:', this.loginForm);
-        
-        // 获取当前页面的基础URL
-        const fullPath = window.location.pathname;
-        this.baseUrl = fullPath.includes('/bingo-test/pages/') 
-            ? '../'
-            : fullPath.includes('/bingo-test/') 
-                ? './'
-                : '/bingo-test/';
-        this.logError('当前路径信息:', {
-            fullPath,
-            baseUrl: this.baseUrl
-        });
+        // 获取当前页面路径
+        const currentPath = window.location.pathname;
+        this.logError('当前页面路径:', currentPath);
 
-        // 检查是否已登录
-        const currentUser = localStorage.getItem('currentUser');
-        this.logError('当前存储的用户信息:', currentUser);
-        
-        if (currentUser) {
-            try {
-                const userData = JSON.parse(currentUser);
-                if (userData && userData.team_name) {
-                    this.logError('检测到有效的用户信息，准备跳转:', {
-                        userData,
-                        targetUrl: this.baseUrl + 'pages/game.html'
-                    });
-                    window.location.href = this.baseUrl + 'pages/game.html';
-                    return;
-                } else {
-                    this.logError('用户数据无效，清除存储');
-                    localStorage.removeItem('currentUser');
-                }
-            } catch (error) {
-                this.logError('解析用户数据失败:', error);
-                localStorage.removeItem('currentUser');
+        // 如果是游戏页面，检查登录状态
+        if (currentPath.includes('/game.html')) {
+            const currentUser = localStorage.getItem('currentUser');
+            if (!currentUser) {
+                this.logError('游戏页面检测到未登录状态，重定向到登录页面');
+                window.location.href = '../index.html';
+                return;
             }
         }
 
-        // 等待 API 准备好再初始化
-        if (window.API) {
-            this.logError('API 已就绪，直接初始化');
-            this.init();
-        } else {
-            this.logError('等待 API 准备...');
-            document.addEventListener('DOMContentLoaded', () => {
-                if (window.API) {
-                    this.logError('DOM加载完成后发现API已就绪，开始初始化');
-                    this.init();
-                } else {
-                    this.logError('DOM加载完成但API未就绪，等待APIReady事件');
-                    window.addEventListener('APIReady', () => {
-                        this.logError('收到 API 就绪事件，开始初始化');
-                        this.init();
-                    });
-                }
-            });
+        // 只在登录页面初始化登录表单
+        if (currentPath.endsWith('/index.html') || currentPath.endsWith('/bingo-test/')) {
+            this.loginForm = document.getElementById('loginForm');
+            if (this.loginForm) {
+                this.init();
+            }
         }
     }
 

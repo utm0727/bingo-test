@@ -211,7 +211,59 @@ class BingoGame {
         }
     }
 
-    // ... 其他方法保持不变
+    // 添加检查 Bingo 的方法
+    checkBingo() {
+        // 检查行
+        for (let i = 0; i < this.size; i++) {
+            if (this.checkLine(i * this.size, 1, this.size)) return true;
+        }
+
+        // 检查列
+        for (let i = 0; i < this.size; i++) {
+            if (this.checkLine(i, this.size, this.size)) return true;
+        }
+
+        // 检查主对角线
+        if (this.checkLine(0, this.size + 1, this.size)) return true;
+
+        // 检查副对角线
+        if (this.checkLine(this.size - 1, this.size - 1, this.size)) return true;
+
+        return false;
+    }
+
+    // 添加检查线的方法
+    checkLine(start, step, count) {
+        for (let i = 0; i < count; i++) {
+            if (!this.board[start + i * step]?.flipped) return false;
+        }
+        return true;
+    }
+
+    // 添加游戏完成处理方法
+    async handleGameComplete(totalTime) {
+        try {
+            console.log('游戏完成！总用时:', totalTime);
+            
+            // 保存分数
+            await window.API.updateScore(this.currentUser.team_name, totalTime);
+            
+            // 显示完成对话框
+            const bingoModal = document.getElementById('bingoModal');
+            if (bingoModal) {
+                const timeDisplay = document.getElementById('completionTime');
+                if (timeDisplay) {
+                    const minutes = Math.floor(totalTime / 60000);
+                    const seconds = Math.floor((totalTime % 60000) / 1000);
+                    timeDisplay.textContent = `${minutes}分${seconds}秒`;
+                }
+                bingoModal.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('处理游戏完成失败:', error);
+            alert('保存游戏记录失败，请刷新页面重试');
+        }
+    }
 }
 
 // 初始化游戏
