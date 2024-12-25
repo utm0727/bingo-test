@@ -481,15 +481,36 @@ function initAPI() {
             // 添加文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
+                    // 确保存储桶已初始化
+                    await this.initStorage();
+
                     const fileName = `${teamName}/${taskId}/${Date.now()}_${file.name}`;
                     const { data, error } = await supabaseClient.storage
                         .from('task-submissions')
-                        .upload(fileName, file);
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                        });
 
                     if (error) throw error;
                     return data.path;
                 } catch (error) {
                     console.error('上传文件失败:', error);
+                    // 如果是存储桶不存在的错误，尝试重新创建
+                    if (error.statusCode === 404 && error.message === 'Bucket not found') {
+                        await this.initStorage();
+                        // 重试上传
+                        const fileName = `${teamName}/${taskId}/${Date.now()}_${file.name}`;
+                        const { data, error: retryError } = await supabaseClient.storage
+                            .from('task-submissions')
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: true
+                            });
+
+                        if (retryError) throw retryError;
+                        return data.path;
+                    }
                     throw error;
                 }
             },
@@ -506,6 +527,46 @@ function initAPI() {
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
                     return null;
+                }
+            },
+
+            // 在 API 对象中添加初始化存储桶的方法
+            async initStorage() {
+                try {
+                    // 检查存储桶是否存在
+                    const { data: buckets } = await supabaseClient
+                        .storage
+                        .listBuckets();
+
+                    const bucketExists = buckets?.some(b => b.name === 'task-submissions');
+                    
+                    if (!bucketExists) {
+                        // 创建存储桶
+                        const { data, error } = await supabaseClient
+                            .storage
+                            .createBucket('task-submissions', {
+                                public: false,
+                                fileSizeLimit: 52428800  // 50MB
+                            });
+
+                        if (error) throw error;
+                        console.log('存储桶创建成功');
+                    }
+
+                    // 设置存储桶策略
+                    const { error: policyError } = await supabaseClient
+                        .storage
+                        .from('task-submissions')
+                        .createSignedUploadUrl('test.txt');  // 测试上传权限
+
+                    if (policyError && policyError.message !== 'File not found') {
+                        throw policyError;
+                    }
+
+                    return true;
+                } catch (error) {
+                    console.error('初始化存储失败:', error);
+                    return false;
                 }
             }
         };

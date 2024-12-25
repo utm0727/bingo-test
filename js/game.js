@@ -272,29 +272,34 @@ class BingoGame {
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
-            console.log('处理任务提交:', {
-                description,
-                hasFile: !!file,
-                fileName: file?.name
-            });
-
             // 保存任务提交
             const submission = {
                 description,
-                hasFile: !!file,
                 timestamp: new Date().toISOString()
             };
 
-            // 如果有文件，添加到提交信息中
+            // 如果有文件，先尝试上传
             if (file) {
-                submission.file = file;  // 临时保存文件对象
+                try {
+                    const filePath = await window.API.uploadTaskFile(
+                        this.currentUser.team_name,
+                        this.board[this.currentTaskIndex].id,
+                        file
+                    );
+                    submission.filePath = filePath;
+                } catch (error) {
+                    console.error('文件上传失败:', error);
+                    if (!confirm('文件上传失败，是否继续提交文字说明？')) {
+                        return;
+                    }
+                }
             }
 
             // 更新格子状态
             this.board[this.currentTaskIndex].completed = true;
             this.board[this.currentTaskIndex].submission = submission;
 
-            // 保存进度（包括文件上传）
+            // 保存进度
             await this.saveProgress();
 
             // 关闭对话框
