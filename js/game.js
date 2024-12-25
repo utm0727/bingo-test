@@ -436,32 +436,23 @@ class BingoGame {
         }
 
         try {
-            // 优先使用已保存的 URL
             if (cell.submission.fileUrl) {
-                console.log('使用已保存的URL:', cell.submission.fileUrl);
+                // 如果已经有 URL，直接使用
                 window.open(cell.submission.fileUrl, '_blank');
-                return;
-            }
-
-            // 如果没有 fileUrl 但有 filePath，尝试获取新的 URL
-            if (cell.submission.filePath) {
-                console.log('尝试获取文件URL，路径:', cell.submission.filePath);
+            } else if (cell.submission.filePath) {
+                // 否则尝试获取新的 URL
                 const url = await window.API.getSubmissionFileUrl(cell.submission.filePath);
                 if (url) {
-                    // 更新缓存的 URL
-                    cell.submission.fileUrl = url;
                     window.open(url, '_blank');
                 } else {
                     throw new Error('无法获取文件URL');
                 }
             } else {
-                // 显示文字说明
-                alert(`提交说明：${cell.submission.description}`);
+                console.log('该提交没有附件');
             }
         } catch (error) {
             console.error('查看文件失败:', error);
-            // 显示更友好的错误信息
-            alert(`无法查看文件，但您可以查看提交说明：\n${cell.submission.description}`);
+            alert('获取文件失败，请重试');
         }
     }
 }

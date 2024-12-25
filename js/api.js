@@ -269,14 +269,8 @@ function initAPI() {
                     
                     // 如果有新的提交包含文件，先上传文件
                     for (const cell of progress.board) {
-                        if (cell?.submission?.file) {  // 添加更严格的检查
+                        if (cell.submission?.file) {
                             try {
-                                console.log('处理单元格文件:', {
-                                    cellId: cell.id,
-                                    hasFile: !!cell.submission.file,
-                                    fileType: cell.submission.file?.type
-                                });
-
                                 const fileResult = await this.uploadTaskFile(
                                     teamName,
                                     cell.id,
@@ -296,10 +290,8 @@ function initAPI() {
                                 // 删除原始文件对象
                                 delete cell.submission.file;
                             } catch (error) {
-                                console.error('文件上传失败:', error, {
-                                    cellId: cell.id,
-                                    teamName: teamName
-                                });
+                                console.error('文件上传失败:', error);
+                                // 继续保存其他数据
                             }
                         }
                     }
@@ -522,18 +514,6 @@ function initAPI() {
             // 修改文件上传方法
             async uploadTaskFile(teamName, taskId, file) {
                 try {
-                    // 添加参数验证
-                    if (!teamName || !taskId || !file) {
-                        console.error('无效的参数:', { teamName, taskId, file });
-                        throw new Error('缺少必要的参数');
-                    }
-
-                    // 验证文件对象
-                    if (!(file instanceof File)) {
-                        console.error('无效的文件对象:', file);
-                        throw new Error('无效的文件对象');
-                    }
-
                     // 简化文件名，避免特殊字符
                     const fileExt = file.name.split('.').pop().toLowerCase();
                     const timestamp = Date.now();
@@ -543,12 +523,8 @@ function initAPI() {
                     console.log('开始上传文件:', {
                         fileName,
                         fileType: file.type,
-                        fileSize: file.size,
-                        originalName: file.name
+                        fileSize: file.size
                     });
-
-                    // 确保已初始化
-                    await this.initStorage();
 
                     // 上传文件
                     const { data, error } = await supabaseClient.storage
@@ -559,10 +535,7 @@ function initAPI() {
                             contentType: file.type
                         });
 
-                    if (error) {
-                        console.error('上传失败:', error);
-                        throw error;
-                    }
+                    if (error) throw error;
 
                     console.log('文件上传成功:', data);
 
@@ -573,8 +546,9 @@ function initAPI() {
 
                     console.log('获取到的公共URL:', publicUrl);
 
+                    // 保存完整信息
                     return {
-                        path: fileName,
+                        path: fileName,  // 保存文件名作为路径
                         url: publicUrl,
                         fileType: file.type,
                         fileName: file.name,
@@ -591,59 +565,50 @@ function initAPI() {
                 try {
                     console.log('正在获取文件URL, 原始路径:', filePath);
 
-                    // 如果是完整URL，验证并返回
+                    // 如果是完整URL，直接返回
                     if (filePath.startsWith('http')) {
-                        const isValid = await this.validateFileUrl(filePath);
-                        if (isValid) {
-                            return filePath;
-                        }
-                        console.log('已保存的URL无效，尝试重新获取');
+                        return filePath;
                     }
 
-                    // 确保路径不以斜杠开头
-                    const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-                    console.log('处理后的路径:', cleanPath);
+                    // 获取存储桶中的文件列表
+                    const { data: files, error: listError } = await supabaseClient.storage
+                        .from('submissions')
+                        .list();
 
-                    // 尝试不同的方法获取URL
-                    const methods = [
-                        // 方法1：使用 getPublicUrl
-                        async () => {
-                            const { data: { publicUrl } } = supabaseClient.storage
-                                .from('submissions')
-                                .getPublicUrl(cleanPath);
-                            return publicUrl;
-                        },
-                        // 方法2：使用 createSignedUrl
-                        async () => {
-                            const { data } = await supabaseClient.storage
-                                .from('submissions')
-                                .createSignedUrl(cleanPath, 3600);
-                            return data?.signedUrl;
-                        },
-                        // 方法3：直接构建URL
-                        async () => {
-                            const baseUrl = 'https://vwkkwthrkqyjmirsgqoo.supabase.co/storage/v1/object/public/submissions/';
-                            return baseUrl + encodeURIComponent(cleanPath);
-                        }
-                    ];
-
-                    // 依次尝试每种方法
-                    for (const method of methods) {
-                        try {
-                            const url = await method();
-                            if (url && await this.validateFileUrl(url)) {
-                                console.log('成功获取到有效的URL:', url);
-                                return url;
-                            }
-                        } catch (error) {
-                            console.error('尝试获取URL失败:', error);
-                        }
+                    if (listError) {
+                        console.error('获取文件列表失败:', listError);
+                        throw listError;
                     }
 
-                    throw new Error('无法获取有效的文件URL');
+                    console.log('存储桶中的文件:', files);
+
+                    // 尝试找到匹配的文件
+                    const file = files.find(f => f.name === filePath);
+                    if (!file) {
+                        console.error('文件未找到:', filePath);
+                        throw new Error('文件未找到');
+                    }
+
+                    // 获取公共URL
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('submissions')
+                        .getPublicUrl(file.name);
+
+                    console.log('获取到的公共URL:', publicUrl);
+                    return publicUrl;
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
-                    return null;
+                    
+                    // 尝试直接构建URL
+                    try {
+                        const baseUrl = `${supabaseClient.storageUrl}/object/public/submissions/`;
+                        const fullUrl = baseUrl + encodeURIComponent(filePath);
+                        console.log('尝试直接构建URL:', fullUrl);
+                        return fullUrl;
+                    } catch (fallbackError) {
+                        console.error('构建URL失败:', fallbackError);
+                        return null;
+                    }
                 }
             },
 
@@ -657,24 +622,39 @@ function initAPI() {
 
                     if (listError) {
                         console.error('检查存储桶失败:', listError);
-                        // 如果是权限错误，继续使用默认存储桶
-                        return true;
+                        throw listError;
                     }
 
-                    // 检查 submissions 存储桶
-                    const submissionsBucket = buckets?.find(b => b.name === 'submissions');
-                    console.log('找到的存储桶:', submissionsBucket);
+                    const bucketExists = buckets?.some(b => b.name === 'submissions');
+                    
+                    if (!bucketExists) {
+                        // 创建存储桶，设置为公开
+                        const { error: createError } = await supabaseClient
+                            .storage
+                            .createBucket('submissions', {
+                                public: true,  // 修改为公开
+                                allowedMimeTypes: ['image/*', 'video/*']
+                            });
 
-                    if (!submissionsBucket) {
-                        console.log('存储桶不存在，使用默认存储桶');
-                        return true;
+                        if (createError) throw createError;
+                        console.log('存储桶创建成功');
+                    } else {
+                        // 如果存储桶已存在，更新为公开
+                        const { error: updateError } = await supabaseClient
+                            .storage
+                            .updateBucket('submissions', {
+                                public: true
+                            });
+
+                        if (updateError) {
+                            console.error('更新存储桶失败:', updateError);
+                        }
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
-                    // 如果出错，继续使用默认存储桶
-                    return true;
+                    throw error;
                 }
             },
 
@@ -686,17 +666,6 @@ function initAPI() {
                     reader.onerror = error => reject(error);
                     reader.readAsDataURL(file);
                 });
-            },
-
-            // 添加文件验证方法
-            async validateFileUrl(url) {
-                try {
-                    const response = await fetch(url, { method: 'HEAD' });
-                    return response.ok;
-                } catch (error) {
-                    console.error('文件验证失败:', error);
-                    return false;
-                }
             }
         };
 
