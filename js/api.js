@@ -178,11 +178,14 @@ function initAPI() {
                 try {
                     const { data, error } = await supabaseClient
                         .from('scores')
-                        .select('id')
+                        .select('*')
                         .eq('team_name', teamName)
-                        .single();
+                        .maybeSingle();
 
-                    if (error) return false;
+                    if (error) {
+                        console.error('检查游戏完成状态失败:', error);
+                        return false;
+                    }
                     return !!data;
                 } catch (error) {
                     console.error('检查游戏完成状态失败:', error);
@@ -268,11 +271,14 @@ function initAPI() {
                 try {
                     const { data, error } = await supabaseClient
                         .from('game_progress')
-                        .select('progress')
+                        .select('*')
                         .eq('team_name', teamName)
-                        .single();
+                        .maybeSingle();
 
-                    if (error) return null;
+                    if (error) {
+                        console.error('获取游戏进度失败:', error);
+                        return null;
+                    }
                     return data?.progress || null;
                 } catch (error) {
                     console.error('获取游戏进度失败:', error);
@@ -283,19 +289,22 @@ function initAPI() {
             // 添加保存游戏进度方法
             async saveGameProgress(teamName, progress) {
                 try {
+                    console.log('保存游戏进度:', { teamName, progress });
                     const { error } = await supabaseClient
                         .from('game_progress')
-                        .upsert([
-                            {
-                                team_name: teamName,
-                                progress: progress,
-                                updated_at: new Date().toISOString()
-                            }
-                        ], {
+                        .upsert({
+                            team_name: teamName,
+                            progress: progress,
+                            updated_at: new Date().toISOString()
+                        }, {
                             onConflict: 'team_name'
                         });
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('保存游戏进度失败:', error);
+                        throw error;
+                    }
+                    console.log('游戏进度保存成功');
                     return true;
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);
