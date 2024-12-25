@@ -220,10 +220,13 @@ function initAPI() {
                 try {
                     console.log('获取排行榜数据');
                     
-                    // 获取所有完成游戏的记录，按完成时间排序
+                    // 从 leaderboard 表获取数据
                     const { data, error } = await supabaseClient
-                        .from('leaderboard')
-                        .select('*')
+                        .from('leaderboard')  // 使用正确的表名
+                        .select(`
+                            team_name,
+                            completion_time
+                        `)
                         .order('completion_time', { ascending: true });  // 按完成时间升序排序
 
                     if (error) {
@@ -231,8 +234,14 @@ function initAPI() {
                         throw error;
                     }
 
-                    console.log('获取到的排行榜数据:', data);
-                    return data || [];
+                    // 格式化数据
+                    const formattedData = data.map(entry => ({
+                        team_name: entry.team_name,
+                        completion_time: entry.completion_time
+                    }));
+
+                    console.log('获取到的排行榜数据:', formattedData);
+                    return formattedData;
                 } catch (error) {
                     console.error('获取排行榜失败:', error);
                     return [];
