@@ -9,18 +9,8 @@ class BingoGame {
         this.currentFlippedIndex = null;
         this.isBingo = false;
 
-        // 等待 API 准备好再初始化
-        if (window.API) {
-            console.log('API 已就绪，开始初始化游戏');
-            this.initGame();
-        } else {
-            console.log('等待 API 准备...');
-            window.addEventListener('APIReady', () => {
-                console.log('API 就绪，开始初始化游戏');
-                this.initGame();
-            });
-        }
-        
+        // 直接初始化，因为在创建实例前已经确保 API 可用
+        this.initGame();
         this.setupAutoSave();
     }
 
