@@ -12,23 +12,12 @@ class AdminPanel {
         this.selectAllCheckbox = document.getElementById('selectAllQuestions');
         this.batchDeleteBtn = document.getElementById('batchDeleteBtn');
         
-        this.init();
-        this.initPanels();
-        
-        // 添加排行榜刷新定时器
-        this.startLeaderboardRefresh();
-
-        // 添加历史记录监听
-        this.setupHistoryListener();
-
-        // 添加实时更新监听
-        this.addQuestionForm.addEventListener('submit', (e) => {
-            this.handleAddQuestion(e).then(() => this.updateGridSizeOptions());
-        });
-
-        // 绑定批量删除相关事件
-        this.selectAllCheckbox?.addEventListener('change', () => this.handleSelectAll());
-        this.batchDeleteBtn?.addEventListener('click', () => this.handleBatchDelete());
+        // 等待 API 准备好再初始化
+        if (window.API) {
+            this.init();
+        } else {
+            window.addEventListener('APIReady', () => this.init());
+        }
     }
 
     init() {
