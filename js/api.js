@@ -277,10 +277,15 @@ function initAPI() {
                                     cell.submission.file
                                 );
                                 
-                                // 保存文件信息
-                                cell.submission.filePath = fileResult.path;
-                                cell.submission.fileUrl = fileResult.url;
-                                cell.submission.fileType = cell.submission.file.type;
+                                // 保存完整的文件信息
+                                cell.submission = {
+                                    ...cell.submission,
+                                    filePath: fileResult.path,
+                                    fileUrl: fileResult.url,
+                                    fileType: fileResult.fileType,
+                                    fileName: fileResult.fileName,
+                                    uploadTime: fileResult.uploadTime
+                                };
                                 
                                 // 删除原始文件对象
                                 delete cell.submission.file;
@@ -291,7 +296,7 @@ function initAPI() {
                         }
                     }
 
-                    // 检查是否存在现有进度
+                    // 更新或插入游戏进度
                     const { data: existingProgress } = await supabaseClient
                         .from('game_progress')
                         .select('*')
@@ -299,7 +304,6 @@ function initAPI() {
                         .single();
 
                     if (existingProgress) {
-                        // 更新现有进度
                         const { error: updateError } = await supabaseClient
                             .from('game_progress')
                             .update({ progress })
@@ -307,7 +311,6 @@ function initAPI() {
 
                         if (updateError) throw updateError;
                     } else {
-                        // 插入新进度
                         const { error: insertError } = await supabaseClient
                             .from('game_progress')
                             .insert([{
@@ -514,7 +517,8 @@ function initAPI() {
                     // 简化文件名，避免特殊字符
                     const fileExt = file.name.split('.').pop().toLowerCase();
                     const timestamp = Date.now();
-                    const fileName = `${teamName}_${taskId}_${timestamp}.${fileExt}`;
+                    const safeTeamName = teamName.replace(/[^a-zA-Z0-9]/g, '_');
+                    const fileName = `${safeTeamName}_${taskId}_${timestamp}.${fileExt}`;
 
                     console.log('开始上传文件:', {
                         fileName,
@@ -525,25 +529,41 @@ function initAPI() {
                     // 先尝试初始化存储
                     await this.initStorage();
 
+                    // 上传文件
                     const { data, error } = await supabaseClient.storage
                         .from('submissions')
                         .upload(fileName, file, {
                             cacheControl: '3600',
-                            upsert: true
+                            upsert: true,
+                            contentType: file.type  // 添加 contentType
                         });
 
                     if (error) throw error;
 
                     console.log('文件上传成功:', data);
 
-                    // 获取文件的公共URL
-                    const { data: urlData } = supabaseClient.storage
+                    // 获取公共URL
+                    const { data: { publicUrl } } = supabaseClient.storage
                         .from('submissions')
-                        .getPublicUrl(fileName);  // 使用相同的文件名
+                        .getPublicUrl(fileName);
 
+                    // 验证URL是否可访问
+                    try {
+                        const response = await fetch(publicUrl, { method: 'HEAD' });
+                        if (!response.ok) {
+                            throw new Error('URL不可访问');
+                        }
+                    } catch (urlError) {
+                        console.error('URL验证失败:', urlError);
+                    }
+
+                    // 保存完整信息
                     return {
-                        path: fileName,  // 保存简化的路径
-                        url: urlData.publicUrl
+                        path: fileName,
+                        url: publicUrl,
+                        fileType: file.type,
+                        fileName: file.name,
+                        uploadTime: new Date().toISOString()
                     };
                 } catch (error) {
                     console.error('上传文件失败:', error);
@@ -555,46 +575,47 @@ function initAPI() {
             async getSubmissionFileUrl(filePath) {
                 try {
                     console.log('正在获取文件URL:', filePath);
-                    
-                    // 先尝试获取公共URL
-                    const { data: urlData } = supabaseClient.storage
-                        .from('submissions')
-                        .getPublicUrl(filePath);
-                        
-                    if (urlData?.publicUrl) {
-                        console.log('获取到公共URL:', urlData.publicUrl);
-                        return urlData.publicUrl;
+
+                    // 如果是完整URL，验证并返回
+                    if (filePath.startsWith('http')) {
+                        try {
+                            const response = await fetch(filePath, { method: 'HEAD' });
+                            if (response.ok) {
+                                return filePath;
+                            }
+                        } catch (error) {
+                            console.error('URL验证失败:', error);
+                        }
                     }
 
-                    // 如果公共URL不可用，尝试获取签名URL
-                    const { data, error } = await supabaseClient.storage
+                    // 尝试获取公共URL
+                    const { data: { publicUrl } } = supabaseClient.storage
                         .from('submissions')
-                        .createSignedUrl(filePath, 3600);  // 1小时有效期
+                        .getPublicUrl(filePath);
 
-                    if (error) {
-                        console.error('创建签名URL失败:', error);
+                    // 验证新的URL
+                    try {
+                        const response = await fetch(publicUrl, { method: 'HEAD' });
+                        if (!response.ok) {
+                            throw new Error('URL不可访问');
+                        }
+                    } catch (error) {
+                        console.error('URL验证失败:', error);
+                        // 尝试获取签名URL作为备选
+                        const { data, error: signedError } = await supabaseClient.storage
+                            .from('submissions')
+                            .createSignedUrl(filePath, 3600);
+
+                        if (!signedError && data?.signedUrl) {
+                            return data.signedUrl;
+                        }
                         throw error;
                     }
 
-                    console.log('获取到签名URL:', data.signedUrl);
-                    return data.signedUrl;
+                    console.log('获取到公共URL:', publicUrl);
+                    return publicUrl;
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
-                    
-                    // 如果文件路径包含斜杠，尝试获取最后一部分
-                    if (filePath.includes('/')) {
-                        const fileName = filePath.split('/').pop();
-                        try {
-                            const { data: retryData } = supabaseClient.storage
-                                .from('submissions')
-                                .getPublicUrl(fileName);
-                                
-                            console.log('使用简化路径获取到URL:', retryData.publicUrl);
-                            return retryData.publicUrl;
-                        } catch (retryError) {
-                            console.error('使用简化路径获取URL也失败:', retryError);
-                        }
-                    }
                     return null;
                 }
             },
@@ -615,16 +636,27 @@ function initAPI() {
                     const bucketExists = buckets?.some(b => b.name === 'submissions');
                     
                     if (!bucketExists) {
-                        // 创建存储桶
+                        // 创建存储桶，设置为公开
                         const { error: createError } = await supabaseClient
                             .storage
                             .createBucket('submissions', {
-                                public: false,
+                                public: true,  // 修改为公开
                                 allowedMimeTypes: ['image/*', 'video/*']
                             });
 
                         if (createError) throw createError;
                         console.log('存储桶创建成功');
+                    } else {
+                        // 如果存储桶已存在，更新为公开
+                        const { error: updateError } = await supabaseClient
+                            .storage
+                            .updateBucket('submissions', {
+                                public: true
+                            });
+
+                        if (updateError) {
+                            console.error('更新存储桶失败:', updateError);
+                        }
                     }
 
                     return true;
