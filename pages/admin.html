@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员控制台 - Bingo 游戏</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="loginSection" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    管理员登录
+                </h2>
+            </div>
+            <form id="adminLoginForm" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <input id="username" name="username" type="text" required
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                            placeholder="用户名">
+                    </div>
+                    <div>
+                        <input id="password" name="password" type="password" required
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                            placeholder="密码">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        登录
+                    </button>
+                </div>
+            </form>
+            
+            <div class="text-center">
+                <a href="../index.html" class="text-sm text-indigo-600 hover:text-indigo-500">
+                    返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminPanel" class="hidden min-h-screen py-6 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-900">管理员控制台</h1>
+                <button onclick="handleLogout()"
+                    class="text-red-600 hover:text-red-500">
+                    退出登录
+                </button>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center cursor-pointer" onclick="togglePanel('adminSettings')">
+                    <h2 class="text-xl font-semibold">管理员设置</h2>
+                    <svg id="adminSettings-arrow" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+                <div id="adminSettings-panel" class="hidden mt-4">
+                    <form id="adminSettingsForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">新用户名</label>
+                            <input type="text" id="newUsername"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="输入新用户名">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">新密码</label>
+                            <input type="password" id="newPassword"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="输入新密码">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">确认新密码</label>
+                            <input type="password" id="confirmPassword"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="再次输入新密码">
+                        </div>
+                        <button type="submit"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                            更新管理员信息
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">游戏设置</h2>
+                <form id="gameSettingsForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Bingo 格子大小</label>
+                        <div class="mt-1 flex items-center gap-4">
+                            <select id="gridSize" 
+                                class="block w-32 border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="3">3 x 3</option>
+                                <option value="4">4 x 4</option>
+                                <option value="5" selected>5 x 5</option>
+                                <option value="6">6 x 6</option>
+                                <option value="7">7 x 7</option>
+                            </select>
+                            <button type="submit"
+                                class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                                更新设置
+                            </button>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-500">选择 Bingo 游戏板的大小（默认 5x5）</p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">实时排行榜</h2>
+                    <button onclick="window.adminPanel.refreshLeaderboard()" 
+                        class="text-sm text-indigo-600 hover:text-indigo-500">
+                        刷新
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    排名
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    团队名称
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    队长
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    完成时间
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    完成时间
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminLeaderboard" class="bg-white divide-y divide-gray-200">
+                            <!-- 排行榜数据将通过 JavaScript 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">题目管理</h2>
+                <form id="addQuestionForm" class="mb-6">
+                    <div class="flex gap-4">
+                        <input type="text" id="newQuestion" required
+                            class="flex-1 border rounded px-3 py-2"
+                            placeholder="输入新题目">
+                        <button type="submit"
+                            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            添加题目
+                        </button>
+                    </div>
+                </form>
+
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="selectAllQuestions" 
+                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="selectAllQuestions" class="text-sm text-gray-600">全选</label>
+                    </div>
+                    <button id="batchDeleteBtn"
+                        class="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        批量删除
+                    </button>
+                </div>
+
+                <div id="questionsList" class="space-y-4">
+                    <!-- 题目列表将通过 JavaScript 动态生成 -->
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">系统管理</h2>
+                <div class="space-y-4">
+                    <div>
+                        <button onclick="window.adminPanel.handleReset()"
+                            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                            重置所有数据
+                        </button>
+                        <p class="mt-2 text-sm text-gray-500">
+                            警告：这将清除所有游戏进度、排行榜和题目数据。此操作不可撤销。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
+                    查看排行榜
+                </a>
+                <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
+                    返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/admin.js"></script>
+</body>
+</html> 

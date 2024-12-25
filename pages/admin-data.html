@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据管理 - Bingo 管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen py-6 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-900">玩家数据管理</h1>
+                <div class="flex gap-4">
+                    <a href="admin.html" class="text-indigo-600 hover:text-indigo-500">
+                        返回管理页面
+                    </a>
+                    <button onclick="refreshData()" class="text-indigo-600 hover:text-indigo-500">
+                        刷新数据
+                    </button>
+                </div>
+            </div>
+
+            <!-- 团队选择器 -->
+            <div class="mb-6">
+                <select id="teamSelector" class="w-full md:w-64 p-2 border rounded" onchange="loadTeamData()">
+                    <option value="">选择团队...</option>
+                </select>
+            </div>
+
+            <!-- 团队数据管理面板 -->
+            <div id="teamDataPanel" class="space-y-6" style="display: none;">
+                <!-- 团队信息 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">团队信息</h2>
+                    <div id="teamInfo" class="space-y-2">
+                        <!-- 团队信息将通过 JavaScript 动态生成 -->
+                    </div>
+                    <div class="mt-4 flex gap-4">
+                        <button onclick="deleteTeamProgress()" class="text-red-600 hover:text-red-700">
+                            删除游戏进度
+                        </button>
+                        <button onclick="deleteTeamScore()" class="text-red-600 hover:text-red-700">
+                            删除排行榜记录
+                        </button>
+                        <button onclick="deleteTeamAllData()" class="text-red-600 hover:text-red-700">
+                            删除所有数据
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 游戏进度和提交内容 -->
+                <div id="submissionsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- 内容将通过 JavaScript 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        let allTeamsData = new Map();
+        let currentTeam = null;
+        let refreshInterval;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadTeams();
+            startAutoRefresh();
+
+            // 添加游戏进度更新事件监听
+            window.addEventListener('gameProgressUpdate', async (event) => {
+                console.log('收到游戏进度更新:', event.detail);
+                await refreshData();
+            });
+
+            // 检查是否有待处理的更新
+            checkPendingUpdates();
+        });
+
+        // 添加检查待处理更新的方法
+        async function checkPendingUpdates() {
+            try {
+                const updates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
+                if (updates.length > 0) {
+                    console.log('发现待处理的更新:', updates);
+                    await refreshData();
+                    localStorage.setItem('pendingUpdates', '[]');
+                }
+            } catch (error) {
+                console.error('检查更新失败:', error);
+            }
+        }
+
+        // 修改 startAutoRefresh 函数
+        function startAutoRefresh() {
+            // 每3秒检查一次更新
+            refreshInterval = setInterval(async () => {
+                try {
+                    // 强制清除缓存重新获取数据
+                    allTeamsData.clear();
+                    localStorage.removeItem('teamsCache');
+                    
+                    // 检查是否有更新标记
+                    if (localStorage.getItem('needsUpdate') === 'true' || 
+                        localStorage.getItem('gameUpdates')) {
+                        console.log('检测到数据更新，正在刷新...');
+                        await refreshData(true); // 传入 true 表示强制刷新
+                        localStorage.removeItem('needsUpdate');
+                        localStorage.removeItem('gameUpdates');
+                    }
+                } catch (error) {
+                    console.error('自动刷新失败:', error);
+                }
+            }, 3000);
+        }
+
+        // 修改 loadTeams 函数
+        async function loadTeams() {
+            try {
+                const teams = await API.getAllTeamsProgress();
+                if (!Array.isArray(teams)) {
+                    throw new Error('获取到的团队数据不是数组');
+                }
+
+                const selector = document.getElementById('teamSelector');
+                const currentSelected = selector.value;
+                
+                selector.innerHTML = '<option value="">选择团队...</option>';
+                allTeamsData.clear();
+
+                teams.forEach(team => {
+                    if (team && team.teamName && team.progress) {
+                        const progress = {
+                            ...team.progress,
+                            board: Array.isArray(team.progress.board) ? team.progress.board : []
+                        };
+
+                        const standardizedTeamData = {
+                            teamName: team.teamName,
+                            leaderName: team.leaderName || '',
+                            progress: progress,
+                            isCompleted: Boolean(team.isCompleted),
+                            score: team.score || 0
+                        };
+
+                        allTeamsData.set(team.teamName, standardizedTeamData);
+                        
+                        const option = document.createElement('option');
+                        option.value = team.teamName;
+                        option.textContent = `${team.teamName}${team.isCompleted ? ' (已完成)' : ''}`;
+                        selector.appendChild(option);
+                    }
+                });
+
+                if (currentSelected && allTeamsData.has(currentSelected)) {
+                    selector.value = currentSelected;
+                    await loadTeamData();
+                }
+            } catch (error) {
+                console.error('加载团队数据失败:', error);
+                alert('加载团队数据失败，请刷新页面重试');
+            }
+        }
+
+        // 修改 loadTeamData 函数
+        async function loadTeamData() {
+            const teamName = document.getElementById('teamSelector').value;
+            const teamDataPanel = document.getElementById('teamDataPanel');
+            
+            if (!teamName) {
+                teamDataPanel.style.display = 'none';
+                return;
+            }
+
+            try {
+                const teamData = allTeamsData.get(teamName);
+                if (!teamData) {
+                    throw new Error(`找不到团队 ${teamName} 的数据`);
+                }
+
+                // 显示团队信息
+                document.getElementById('teamInfo').innerHTML = `
+                    <p>团队名称：${teamName}</p>
+                    <p>队长：${teamData.leaderName || '未知'}</p>
+                    <p>开始时间：${new Date(teamData.progress.startTime).toLocaleString()}</p>
+                    <p>最后保存：${new Date(teamData.progress.lastSaveTime).toLocaleString()}</p>
+                    <p>总游戏时间：${Math.floor(teamData.progress.totalPlayTime / 1000)}秒</p>
+                    ${teamData.isCompleted ? `<p>完成用时：${Math.floor(teamData.score / 60)}分${teamData.score % 60}秒</p>` : ''}
+                `;
+
+                // 显示游戏进度和提交内容
+                const container = document.getElementById('submissionsContainer');
+                container.innerHTML = '';
+
+                teamData.progress.board.forEach((cell, index) => {
+                    if (!cell) return;
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'bg-white rounded-lg shadow overflow-hidden';
+                    cellElement.innerHTML = `
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-900">题目 ${index + 1}</h3>
+                                    <p class="text-sm text-gray-600">${cell.question || '未知题目'}</p>
+                                </div>
+                                <span class="${cell.completed ? 'text-green-600' : 'text-gray-400'} text-sm">${cell.completed ? '已完成' : '未完成'}</span>
+                            </div>
+                            ${cell.completed ? `
+                                <div class="border-t pt-3">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <p class="text-xs text-gray-500">提交内容：</p>
+                                        <button onclick="deleteCellData(${index})" 
+                                            class="text-xs text-red-600 hover:text-red-700">
+                                            删除提交
+                                        </button>
+                                    </div>
+                                    ${renderPreview(cell)}
+                                    <div class="mt-2 text-xs text-gray-500">
+                                        提交时间：${new Date(cell.timestamp).toLocaleString()}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    container.appendChild(cellElement);
+                });
+
+                teamDataPanel.style.display = 'block';
+            } catch (error) {
+                console.error('加载团队详细数据失败:', error);
+                teamDataPanel.style.display = 'none';
+                alert(`加载团队数据失败: ${error.message}`);
+            }
+        }
+
+        // 在页面卸载时清理定时器
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+
+        // 删除单个格子的提交数据
+        async function deleteCellData(index) {
+            if (!currentTeam) return;
+            if (!confirm('确定要删除这个格子的提交数据吗？')) return;
+
+            try {
+                const teamData = allTeamsData.get(currentTeam);
+                teamData.progress.board[index].completed = false;
+                teamData.progress.board[index].preview = null;
+                teamData.progress.board[index].fileType = null;
+                
+                await API.saveGameProgress(currentTeam, teamData);
+                await loadTeams();
+                loadTeamData();
+                alert('提交数据已删除');
+            } catch (error) {
+                console.error('删除提交数据失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+
+        // 删除团队游戏进度
+        async function deleteTeamProgress() {
+            if (!currentTeam) return;
+            if (!confirm('确定要删除该团队的游戏进度吗？')) return;
+
+            try {
+                await API.clearGameProgress(currentTeam);
+                await loadTeams();
+                loadTeamData();
+                alert('游戏进度已删除');
+            } catch (error) {
+                console.error('删除游戏进度失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+
+        // 删除团队排行榜记录
+        async function deleteTeamScore() {
+            if (!currentTeam) return;
+            if (!confirm('确定要删除该团队的排行榜记录吗？')) return;
+
+            try {
+                await API.deleteTeamScore(currentTeam);
+                await loadTeams();
+                loadTeamData();
+                alert('排行榜记录已删除');
+            } catch (error) {
+                console.error('删除排行榜记录失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+
+        // 删除团队所有数据
+        async function deleteTeamAllData() {
+            if (!currentTeam) return;
+            if (!confirm('确定要删除该团队的所有数据吗？这将删除游戏进度、排行榜记录和所有提交内容。')) return;
+
+            try {
+                await API.deleteTeamScore(currentTeam);
+                await API.clearGameProgress(currentTeam);
+                await loadTeams();
+                document.getElementById('teamSelector').value = '';
+                document.getElementById('teamDataPanel').style.display = 'none';
+                alert('团队所有数据已删除');
+            } catch (error) {
+                console.error('删除团队数据失败:', error);
+                alert('删除失败，请重试');
+            }
+        }
+
+        // 修改 refreshData 函数
+        async function refreshData(forceRefresh = false) {
+            try {
+                console.log('开始刷新数据, 强制刷新:', forceRefresh);
+                
+                if (forceRefresh) {
+                    // 清除所有缓存
+                    allTeamsData.clear();
+                    localStorage.removeItem('teamsCache');
+                }
+                
+                await loadTeams();
+                const currentTeam = document.getElementById('teamSelector').value;
+                if (currentTeam) {
+                    await loadTeamData();
+                }
+                
+                console.log('数据刷新完成');
+            } catch (error) {
+                console.error('刷新数据失败:', error);
+            }
+        }
+
+        // 修改 renderPreview 函数
+        function renderPreview(cell) {
+            if (!cell.preview) return '<span class="text-gray-500">无内容</span>';
+
+            try {
+                // 检查是否是 Base64 编码的数据
+                const isBase64 = typeof cell.preview === 'string' && 
+                    (cell.preview.startsWith('data:') || 
+                     cell.preview.startsWith('blob:') ||
+                     /^[A-Za-z0-9+/=]+$/.test(cell.preview));
+
+                // 图片预览
+                if (cell.fileType.startsWith('image/')) {
+                    return `
+                        <div class="flex flex-col items-center">
+                            <img src="${isBase64 ? cell.preview : `data:${cell.fileType};base64,${cell.preview}`}" 
+                                class="max-w-full max-h-[200px] object-contain rounded cursor-pointer" 
+                                alt="预览"
+                                onclick="showPreview('${cell.preview}', '${cell.fileType}')"
+                            >
+                            <span class="text-xs text-gray-500 mt-1">点击查看大图</span>
+                        </div>
+                    `;
+                } 
+                // 视频预览
+                else if (cell.fileType.startsWith('video/')) {
+                    const videoSrc = isBase64 ? cell.preview : `data:${cell.fileType};base64,${cell.preview}`;
+                    return `
+                        <div class="flex flex-col items-center">
+                            <div class="relative cursor-pointer w-full" onclick="showPreview('${videoSrc}', '${cell.fileType}')">
+                                <video class="max-w-full max-h-[200px] rounded mx-auto">
+                                    <source src="${videoSrc}" type="${cell.fileType}">
+                                </video>
+                                <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-20">
+                                    <svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-500 mt-1">点击播放视频</span>
+                            <a href="${videoSrc}" 
+                               download="video.${cell.fileType.split('/')[1]}"
+                               class="text-xs text-indigo-600 hover:text-indigo-500 mt-1"
+                               onclick="event.stopPropagation()"
+                            >
+                                下载视频
+                            </a>
+                        </div>
+                    `;
+                } 
+                // 文本预览
+                else if (cell.fileType.startsWith('text/')) {
+                    const textContent = isBase64 ? 
+                        atob(cell.preview.split(',')[1]) : 
+                        cell.preview;
+                    return `
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p class="text-sm text-gray-700">${textContent}</p>
+                        </div>
+                    `;
+                }
+                
+                return '<span class="text-gray-500">未知类型的内容</span>';
+            } catch (error) {
+                console.error('渲染预览失败:', error, cell);
+                return '<span class="text-red-500">预览加载失败</span>';
+            }
+        }
+
+        // 修改 showPreview 函数
+        function showPreview(preview, fileType) {
+            try {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                modal.onclick = () => modal.remove();
+
+                const content = document.createElement('div');
+                content.className = 'max-w-4xl max-h-[90vh] p-4';
+                content.onclick = (e) => e.stopPropagation();
+
+                // 检查是否是 Base64 编码的数据
+                const isBase64 = preview.startsWith('data:') || 
+                                preview.startsWith('blob:') ||
+                                /^[A-Za-z0-9+/=]+$/.test(preview);
+                const src = isBase64 ? preview : `data:${fileType};base64,${preview}`;
+
+                if (fileType.startsWith('image/')) {
+                    content.innerHTML = `
+                        <img src="${src}" class="max-w-full max-h-[80vh] object-contain" alt="预览">
+                    `;
+                } else if (fileType.startsWith('video/')) {
+                    content.innerHTML = `
+                        <div class="flex flex-col items-center gap-4">
+                            <video class="max-w-full max-h-[80vh]" controls autoplay>
+                                <source src="${src}" type="${fileType}">
+                            </video>
+                            <a href="${src}" 
+                               download="video.${fileType.split('/')[1]}"
+                               class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                               onclick="event.stopPropagation()"
+                            >
+                                下载视频
+                            </a>
+                        </div>
+                    `;
+                }
+
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+            } catch (error) {
+                console.error('显示预览失败:', error);
+                alert('预览加载失败');
+            }
+        }
+    </script>
+</body>
+</html> 
