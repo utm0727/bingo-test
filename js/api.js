@@ -1,15 +1,16 @@
 // 初始化 Supabase 客户端
-const supabase = window.supabase.createClient(
+const { createClient } = supabase;
+const supabaseClient = createClient(
     'https://vwkkwthrkqyjmirsgqoo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
 );
 
-// 改为全局变量
+// 定义为全局变量
 window.API = {
     // 登录相关方法
     async login(teamName, leaderName) {
         try {
-            const { data: existingUser, error: selectError } = await supabase
+            const { data: existingUser, error: selectError } = await supabaseClient
                 .from('users')
                 .select()
                 .eq('team_name', teamName)
@@ -23,7 +24,7 @@ window.API = {
                 return existingUser;
             }
 
-            const { data: newUser, error: insertError } = await supabase
+            const { data: newUser, error: insertError } = await supabaseClient
                 .from('users')
                 .insert([{
                     team_name: teamName,
@@ -43,7 +44,7 @@ window.API = {
     // 获取题目列表
     async getQuestions() {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('questions')
                 .select('*')
                 .order('created_at', { ascending: true });
@@ -59,7 +60,7 @@ window.API = {
     // 添加新题目
     async addQuestion(question) {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('questions')
                 .insert([{ question }])
                 .select()
@@ -76,7 +77,7 @@ window.API = {
     // 删除题目
     async deleteQuestion(id) {
         try {
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('questions')
                 .delete()
                 .eq('id', id);
@@ -92,7 +93,7 @@ window.API = {
     // 更新游戏设置
     async updateGameSettings(gridSize) {
         try {
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('game_settings')
                 .upsert([{
                     id: 1, // 使用固定 ID，因为只需要一条设置记录
@@ -110,7 +111,7 @@ window.API = {
     // 获取游戏设置
     async getGameSettings() {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('game_settings')
                 .select('grid_size')
                 .single();
@@ -126,7 +127,7 @@ window.API = {
     // 检查游戏完成状态
     async checkGameCompletion(teamName) {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('scores')
                 .select('id')
                 .eq('team_name', teamName)
@@ -146,7 +147,7 @@ window.API = {
             // 删除所有游戏相关数据，但保留管理员账户
             const tables = ['scores', 'game_progress', 'questions'];
             for (const table of tables) {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from(table)
                     .delete()
                     .neq('id', 0); // 删除所有记录
@@ -155,7 +156,7 @@ window.API = {
             }
 
             // 清除存储的文件
-            const { error: storageError } = await supabase
+            const { error: storageError } = await supabaseClient
                 .storage
                 .from('game-files')
                 .remove(['*']);
