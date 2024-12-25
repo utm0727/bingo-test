@@ -508,17 +508,28 @@ function initAPI() {
                 }
             },
 
-            // 添加文件上传方法
+            // 修改文件上传方法，确保返回正确的路径
             async uploadTaskFile(teamName, taskId, file) {
                 try {
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${teamName}/${taskId}/${Date.now()}.${fileExt}`;
 
+                    console.log('开始上传文件:', {
+                        fileName,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
+
                     const { data, error } = await supabaseClient.storage
                         .from('submissions')
-                        .upload(fileName, file);
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                        });
 
                     if (error) throw error;
+
+                    console.log('文件上传成功:', data);
 
                     // 获取文件的公共URL
                     const { data: { publicUrl } } = supabaseClient.storage
@@ -526,7 +537,7 @@ function initAPI() {
                         .getPublicUrl(data.path);
 
                     return {
-                        path: data.path,
+                        path: data.path,  // 保存完整路径
                         url: publicUrl
                     };
                 } catch (error) {
@@ -535,28 +546,38 @@ function initAPI() {
                 }
             },
 
-            // 添加获取提交文件URL的方法
+            // 修改获取文件 URL 的方法
             async getSubmissionFileUrl(filePath) {
                 try {
-                    // 尝试从 task-submissions 获取
-                    let { data, error } = await supabaseClient.storage
-                        .from('task-submissions')
-                        .createSignedUrl(filePath, 3600);
+                    console.log('正在获取文件URL:', filePath);
+                    
+                    // 直接从 submissions 存储桶获取
+                    const { data, error } = await supabaseClient.storage
+                        .from('submissions')  // 使用正确的存储桶名称
+                        .createSignedUrl(filePath, 3600);  // 1小时有效期
 
                     if (error) {
-                        // 如果失败，尝试从 public 获取
-                        const { data: publicData, error: publicError } = await supabaseClient.storage
-                            .from('public')
-                            .createSignedUrl(filePath, 3600);
-
-                        if (publicError) throw publicError;
-                        return publicData.signedUrl;
+                        console.error('创建签名URL失败:', error);
+                        throw error;
                     }
 
+                    console.log('获取到文件URL:', data.signedUrl);
                     return data.signedUrl;
                 } catch (error) {
                     console.error('获取文件URL失败:', error);
-                    return null;
+                    
+                    // 尝试获取公共URL
+                    try {
+                        const { data: { publicUrl } } = supabaseClient.storage
+                            .from('submissions')
+                            .getPublicUrl(filePath);
+                            
+                        console.log('获取到公共URL:', publicUrl);
+                        return publicUrl;
+                    } catch (fallbackError) {
+                        console.error('获取公共URL也失败:', fallbackError);
+                        return null;
+                    }
                 }
             },
 

@@ -430,13 +430,29 @@ class BingoGame {
     // 添加查看提交文件的方法
     async viewSubmission(index) {
         const cell = this.board[index];
-        if (cell?.submission?.filePath) {
-            const url = await window.API.getSubmissionFileUrl(cell.submission.filePath);
-            if (url) {
-                window.open(url, '_blank');
+        if (!cell?.submission) {
+            console.log('没有找到提交内容');
+            return;
+        }
+
+        try {
+            if (cell.submission.fileUrl) {
+                // 如果已经有 URL，直接使用
+                window.open(cell.submission.fileUrl, '_blank');
+            } else if (cell.submission.filePath) {
+                // 否则尝试获取新的 URL
+                const url = await window.API.getSubmissionFileUrl(cell.submission.filePath);
+                if (url) {
+                    window.open(url, '_blank');
+                } else {
+                    throw new Error('无法获取文件URL');
+                }
             } else {
-                alert('获取文件失败，请重试');
+                console.log('该提交没有附件');
             }
+        } catch (error) {
+            console.error('查看文件失败:', error);
+            alert('获取文件失败，请重试');
         }
     }
 }
