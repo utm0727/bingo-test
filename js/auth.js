@@ -1,81 +1,62 @@
-const supabaseUrl = 'https://vwkkwthrkqyjmirsgqoo.supabase.co';
-const supabaseKey = 'your-anon-key';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
-// 玩家登录
-async function playerLogin(username, password) {
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select()
-            .eq('username', username)
-            .eq('password', password)
-            .eq('is_admin', false)  // 确保是玩家账号
-            .single();
-
-        if (error) throw error;
-        if (!data) throw new Error('玩家账号或密码错误');
-
-        sessionStorage.setItem('currentPlayer', JSON.stringify(data));
-        return data;
-    } catch (error) {
-        console.error('玩家登录失败:', error);
-        throw error;
-    }
-}
-
-// 管理员登录
-async function adminLogin(username, password) {
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select()
-            .eq('username', username)
-            .eq('password', password)
-            .eq('is_admin', true)  // 确保是管理员账号
-            .single();
-
-        if (error) throw error;
-        if (!data) throw new Error('管理员账号或密码错误');
-
-        sessionStorage.setItem('currentAdmin', JSON.stringify(data));
-        return data;
-    } catch (error) {
-        console.error('管理员登录失败:', error);
-        throw error;
-    }
-}
-
-// 检查玩家登录状态
-function checkPlayerLogin() {
-    return sessionStorage.getItem('currentPlayer') !== null;
-}
-
-// 检查管理员登录状态
-function checkAdminLogin() {
-    return sessionStorage.getItem('currentAdmin') !== null;
-}
-
-// 检查当前页面是否是登录页面
-const isLoginPage = window.location.pathname.includes('login.html');
-
-window.onload = async function() {
-    try {
-        const currentPlayer = sessionStorage.getItem('currentPlayer');
-        const currentAdmin = sessionStorage.getItem('currentAdmin');
+class Auth {
+    constructor() {
+        this.loginForm = document.getElementById('loginForm');
         
-        // 如果在登录页面但已经登录，重定向到主页
-        if (isLoginPage && (currentPlayer || currentAdmin)) {
-            window.location.href = './';
+        // 检查是否已登录
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            console.log('用户已登录，重定向到游戏页面');
+            window.location.href = 'pages/game.html';
             return;
         }
-        
-        // 如果不在登录页面且未登录，重定向到登录页
-        if (!isLoginPage && !currentPlayer && !currentAdmin) {
-            window.location.href = './login.html';
-            return;
+
+        // 等待 API 准备好再初始化
+        if (window.API) {
+            this.init();
+        } else {
+            window.addEventListener('APIReady', () => this.init());
         }
-    } catch (error) {
-        console.error('初始化失败:', error);
     }
-}; 
+
+    init() {
+        if (this.loginForm) {
+            this.loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleLogin();
+            });
+        }
+    }
+
+    async handleLogin() {
+        try {
+            const teamName = document.getElementById('teamName').value.trim();
+            const leaderName = document.getElementById('leaderName').value.trim();
+
+            if (!teamName || !leaderName) {
+                alert('请填写所有字段');
+                return;
+            }
+
+            console.log('尝试登录:', { teamName, leaderName });
+            const user = await window.API.login(teamName, leaderName);
+            
+            if (user) {
+                console.log('登录成功:', user);
+                // 保存用户信息到 localStorage
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                
+                // 使用 window.location.replace 而不是 href
+                window.location.replace('pages/game.html');
+            } else {
+                console.error('登录失败：未返回用户信息');
+                alert('登录失败，请重试');
+            }
+        } catch (error) {
+            console.error('登录失败:', error);
+            alert('登录失败，请重试');
+        }
+    }
+}
+
+// 初始化认证
+window.auth = new Auth(); 
