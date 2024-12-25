@@ -21,26 +21,23 @@ class Auth {
         const fullPath = window.location.pathname;
         this.logError('当前页面路径:', fullPath);
 
-        // 修改基础URL的计算方式
-        const repoName = '/bingo-test';
+        // 设置基础URL和仓库名称
+        this.repoName = '/bingo-test';
+        this.isGitHubPages = window.location.hostname.includes('github.io');
         
-        // 检查是否在 GitHub Pages 环境
-        if (window.location.hostname.includes('github.io')) {
-            this.baseUrl = fullPath.includes(`${repoName}/pages/`) 
-                ? '../'
-                : `${repoName}/`;
+        // 根据环境设置基础URL
+        if (this.isGitHubPages) {
+            this.baseUrl = this.repoName;
         } else {
-            // 本地开发环境
-            this.baseUrl = fullPath.includes('/pages/') 
-                ? '../'
-                : './';
+            this.baseUrl = '';
         }
 
-        this.logError('路径信息:', {
+        this.logError('环境信息:', {
             fullPath,
             baseUrl: this.baseUrl,
             hostname: window.location.hostname,
-            isGitHubPages: window.location.hostname.includes('github.io')
+            isGitHubPages: this.isGitHubPages,
+            origin: window.location.origin
         });
 
         // 如果是游戏页面，检查登录状态
@@ -143,24 +140,27 @@ class Auth {
                 
                 localStorage.setItem('currentUser', JSON.stringify(userData));
                 
-                // 构建游戏页面的完整URL
-                const currentUrl = new URL(window.location.href);
-                const gamePath = currentUrl.pathname.includes('/pages/') 
-                    ? 'game.html'
-                    : 'pages/game.html';
-                
-                // 使用 URL API 构建完整路径
-                const baseUrl = currentUrl.pathname.includes('/pages/')
-                    ? new URL('..', currentUrl)
-                    : currentUrl;
-                
-                const fullGamePath = new URL(gamePath, baseUrl).href;
+                // 构建游戏页面URL
+                let gamePath;
+                if (this.isGitHubPages) {
+                    gamePath = `${this.baseUrl}/pages/game.html`;
+                } else {
+                    gamePath = '/pages/game.html';
+                }
+
+                // 确保路径正确
+                gamePath = gamePath.replace(/\/+/g, '/');
+                if (this.isGitHubPages && !gamePath.startsWith('/')) {
+                    gamePath = '/' + gamePath;
+                }
+
+                const fullGamePath = window.location.origin + gamePath;
                 
                 this.logError('准备跳转:', {
                     gamePath,
-                    baseUrl: baseUrl.href,
                     fullGamePath,
-                    currentUrl: currentUrl.href
+                    origin: window.location.origin,
+                    isGitHubPages: this.isGitHubPages
                 });
                 
                 setTimeout(() => {
