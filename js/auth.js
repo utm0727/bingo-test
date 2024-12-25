@@ -10,7 +10,7 @@ window.onload = async function() {
     try {
         const currentUser = sessionStorage.getItem('currentUser');
         if (!currentUser) {
-            window.location.href = './login.html';  // 使用相对路径
+            window.location.href = '/bingo-test/login.html';  // 修改这里
             return;
         }
         // ... 其他代码
