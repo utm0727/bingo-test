@@ -1,11 +1,11 @@
 class AdminPanel {
     constructor() {
+        // 初始化表单引用
         this.loginForm = document.getElementById('adminLoginForm');
         this.loginSection = document.getElementById('loginSection');
         this.adminPanel = document.getElementById('adminPanel');
         this.addQuestionForm = document.getElementById('addQuestionForm');
         this.questionsList = document.getElementById('questionsList');
-        this.adminSettingsForm = document.getElementById('adminSettingsForm');
         this.gameSettingsForm = document.getElementById('gameSettingsForm');
         
         // 添加批量删除相关的元素引用
@@ -26,6 +26,12 @@ class AdminPanel {
     }
 
     init() {
+        // 检查所有必需的元素是否存在
+        if (!this.loginForm || !this.addQuestionForm || !this.gameSettingsForm) {
+            console.error('找不到必需的表单元素');
+            return;
+        }
+
         // 修改登录检查逻辑
         const isAdmin = sessionStorage.getItem('isAdmin');
         const lastActivity = sessionStorage.getItem('adminLastActivity');
@@ -46,15 +52,32 @@ class AdminPanel {
         // 绑定事件
         this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         this.addQuestionForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
-        this.adminSettingsForm.addEventListener('submit', (e) => this.handleUpdateAdmin(e));
         this.gameSettingsForm.addEventListener('submit', (e) => this.handleUpdateGameSettings(e));
+        
+        // 绑定批量删除相关事件
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.addEventListener('change', () => this.handleSelectAll());
+        }
+        if (this.batchDeleteBtn) {
+            this.batchDeleteBtn.addEventListener('click', () => this.handleBatchDelete());
+        }
         
         // 加载题目列表
         this.loadQuestions();
         this.loadGameSettings();
+    }
+
+    // 添加清理方法
+    cleanup() {
+        // 清除会话存储
+        sessionStorage.removeItem('isAdmin');
+        sessionStorage.removeItem('adminLastActivity');
         
-        // 初始载排行榜
-        this.refreshLeaderboard();
+        // 清除本地存储中的管理员相关数据
+        localStorage.removeItem('adminSettings');
+        
+        // 重定向到登录页面
+        window.location.href = 'admin.html';
     }
 
     initPanels() {
@@ -191,31 +214,6 @@ class AdminPanel {
             await this.updateGridSizeOptions(); // 删除后更新选项
         } catch (error) {
             alert('删除题目失败，请重试');
-        }
-    }
-
-    async handleUpdateAdmin(e) {
-        e.preventDefault();
-        const newUsername = document.getElementById('newUsername').value.trim();
-        const newPassword = document.getElementById('newPassword').value.trim();
-        const confirmPassword = document.getElementById('confirmPassword').value.trim();
-
-        if (!newUsername || !newPassword || !confirmPassword) {
-            alert('所有字段都不能为空');
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            alert('两次输入的密码不一致');
-            return;
-        }
-
-        try {
-            await API.updateAdminCredentials(newUsername, newPassword);
-            alert('管理员信息更新成功，请使用新的用户名和密码新登录');
-            handleLogout();
-        } catch (error) {
-            alert('更新管理员信息失败');
         }
     }
 
@@ -431,21 +429,15 @@ class AdminPanel {
     }
 }
 
-// 修改登出函数
-function handleLogout() {
-    if (confirm('确定要退出登录吗？')) {
-        // 清理定时器
-        if (window.adminPanel) {
-            window.adminPanel.cleanup();
-        }
-        // 清除所有管理员相关的状态
-        window.adminPanel.clearAdminSession();
-        window.location.href = '../index.html';
-    }
-}
-
-// 初始化管理员面板
+// 创建全局实例
 window.adminPanel = new AdminPanel();
+
+// 添加全局登出处理函数
+window.handleLogout = function() {
+    if (window.adminPanel) {
+        window.adminPanel.cleanup();
+    }
+};
 
 // 添加全局折叠面板控制函数
 function togglePanel(panelId) {
