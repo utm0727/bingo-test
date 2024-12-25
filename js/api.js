@@ -208,6 +208,87 @@ function initAPI() {
                     console.error('获取排行榜失败:', error);
                     return [];
                 }
+            },
+
+            // 添加获取游戏进度方法
+            async getGameProgress(teamName) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('game_progress')
+                        .select('progress')
+                        .eq('team_name', teamName)
+                        .single();
+
+                    if (error) return null;
+                    return data?.progress || null;
+                } catch (error) {
+                    console.error('获取游戏进度失败:', error);
+                    return null;
+                }
+            },
+
+            // 添加保存游戏进度方法
+            async saveGameProgress(teamName, progress) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('game_progress')
+                        .upsert([
+                            {
+                                team_name: teamName,
+                                progress: progress,
+                                updated_at: new Date().toISOString()
+                            }
+                        ], {
+                            onConflict: 'team_name'
+                        });
+
+                    if (error) throw error;
+                    return true;
+                } catch (error) {
+                    console.error('保存游戏进度失败:', error);
+                    throw error;
+                }
+            },
+
+            // 添加更新分数方法
+            async updateScore(teamName, score) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('scores')
+                        .upsert([
+                            {
+                                team_name: teamName,
+                                score: score,
+                                created_at: new Date().toISOString()
+                            }
+                        ], {
+                            onConflict: 'team_name'
+                        });
+
+                    if (error) throw error;
+                    return true;
+                } catch (error) {
+                    console.error('更新分数失败:', error);
+                    throw error;
+                }
+            },
+
+            // 添加获取随机题目方法
+            async getRandomQuestions(count) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*');
+
+                    if (error) throw error;
+
+                    // 随机打乱题目顺序并返回指定数量
+                    const shuffled = data.sort(() => 0.5 - Math.random());
+                    return shuffled.slice(0, count);
+                } catch (error) {
+                    console.error('获取随机题目失败:', error);
+                    return [];
+                }
             }
         };
 
