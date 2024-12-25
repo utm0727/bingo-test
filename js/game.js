@@ -1,8 +1,20 @@
 class BingoGame {
     constructor() {
-        // 从 localStorage 获取用户信息
-        const currentUser = localStorage.getItem('currentUser');
-        this.currentUser = currentUser ? JSON.parse(currentUser) : null;
+        // 修改获取用户信息的方式
+        try {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) {
+                console.log('未找到用户信息，重定向到登录页面');
+                window.location.href = '../index.html';
+                return;
+            }
+            this.currentUser = JSON.parse(userStr);
+            console.log('当前用户信息:', this.currentUser);
+        } catch (error) {
+            console.error('解析用户信息失败:', error);
+            window.location.href = '../index.html';
+            return;
+        }
         
         this.board = [];
         this.size = 5;
@@ -14,9 +26,14 @@ class BingoGame {
 
         // 等待 API 准备好再初始化
         if (window.API) {
+            console.log('API 已就绪，初始化游戏...');
             this.initGame();
         } else {
-            window.addEventListener('APIReady', () => this.initGame());
+            console.log('等待 API 准备...');
+            window.addEventListener('APIReady', () => {
+                console.log('API 就绪，初始化游戏...');
+                this.initGame();
+            });
         }
     }
 
@@ -55,38 +72,50 @@ class BingoGame {
 
     async initGame() {
         try {
-            // 检查用户是否登录
+            // 再次检查用户信息
             if (!this.currentUser || !this.currentUser.team_name) {
-                console.log('用户未登录，重定向到登录页面');
+                console.error('用户信息无效:', this.currentUser);
                 window.location.href = '../index.html';
                 return;
             }
 
-            // 更新界面显示
-            document.getElementById('teamInfo').textContent = 
-                `团队：${this.currentUser.team_name}`;
+            console.log('开始初始化游戏，团队名称:', this.currentUser.team_name);
 
-            // 首先检查是否已经完成 Bingo
-            const isCompleted = await window.API.checkGameCompletion(this.currentUser.team_name);
-            if (isCompleted) {
-                this.isBingo = true;
-                document.getElementById('bingoModal').classList.remove('hidden');
-                return;
+            // 更新界面显示
+            const teamInfoElement = document.getElementById('teamInfo');
+            if (teamInfoElement) {
+                teamInfoElement.textContent = `团队：${this.currentUser.team_name}`;
             }
 
             // 获取游戏设置
             const settings = await window.API.getGameSettings();
             this.size = settings.gridSize;
+            console.log('游戏设置:', settings);
+
+            // 检查是否已完成
+            const isCompleted = await window.API.checkGameCompletion(this.currentUser.team_name);
+            if (isCompleted) {
+                console.log('游戏已完成');
+                this.isBingo = true;
+                const bingoModal = document.getElementById('bingoModal');
+                if (bingoModal) {
+                    bingoModal.classList.remove('hidden');
+                }
+                return;
+            }
 
             // 尝试恢复进度
             const savedProgress = await window.API.getGameProgress(this.currentUser.team_name);
+            console.log('保存的进度:', savedProgress);
+
             if (savedProgress) {
                 this.board = savedProgress.board;
                 this.startTime = savedProgress.startTime;
                 this.totalPlayTime = savedProgress.totalPlayTime || 0;
                 this.lastSaveTime = savedProgress.lastSaveTime;
+                console.log('已恢复保存的进度');
             } else {
-                // 如果没有保存的进度，创建新游戏
+                console.log('没有找到保存的进度，创建新游戏');
                 await this.createNewGame();
             }
 
@@ -94,6 +123,7 @@ class BingoGame {
             this.setupAutoSave();
         } catch (error) {
             console.error('初始化游戏失败:', error);
+            alert('初始化游戏失败，请刷新页面重试');
         }
     }
 
