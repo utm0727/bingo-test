@@ -129,10 +129,10 @@ class AdminPanel {
 
     async loadQuestions() {
         try {
-            const questions = await API.getQuestions();
+            const questions = await window.API.getQuestions();
             this.renderQuestions(questions);
         } catch (error) {
-            console.error('Failed to load questions:', error);
+            console.error('加载题目失败:', error);
         }
     }
 
@@ -153,32 +153,54 @@ class AdminPanel {
     }
 
     renderQuestions(questions) {
-        this.questionsList.innerHTML = questions.map(q => `
-            <div class="flex items-center justify-between border-b pb-2">
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" 
-                        class="question-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        data-question-id="${q.id}">
-                    <span>${q.question}</span>
-                </div>
-                <button
-                    onclick="adminPanel.handleDeleteQuestion(${q.id})"
-                    class="text-red-600 hover:text-red-700"
-                >
+        const questionsList = document.getElementById('questionsList');
+        questionsList.innerHTML = '';
+
+        questions.forEach(question => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'flex items-center gap-4 p-4 bg-gray-50 rounded';
+            questionDiv.innerHTML = `
+                <input type="checkbox" 
+                    class="question-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    data-id="${question.id}">
+                <span class="flex-1">${question.question}</span>
+                <button class="delete-btn text-red-600 hover:text-red-700"
+                    data-id="${question.id}">
                     删除
                 </button>
-            </div>
-        `).join('');
+            `;
 
-        // 添加复选框变化事件监听
-        this.questionsList.querySelectorAll('.question-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.updateBatchDeleteButton());
+            // 添加删除按钮的点击事件
+            const deleteBtn = questionDiv.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', async () => {
+                try {
+                    console.log('正在删除题目:', question.id);
+                    await window.API.deleteQuestion(question.id);
+                    console.log('题目删除成功');
+                    questionDiv.remove();
+                    
+                    // 更新全选按钮状态
+                    this.updateSelectAllState();
+                    // 更新批量删除按钮状态
+                    this.updateBatchDeleteButton();
+                } catch (error) {
+                    console.error('删除题目失败:', error);
+                    alert('删除题目失败，请重试');
+                }
+            });
+
+            // 添加复选框的变化事件
+            const checkbox = questionDiv.querySelector('.question-checkbox');
+            checkbox.addEventListener('change', () => {
+                this.updateBatchDeleteButton();
+                this.updateSelectAllState();
+            });
+
+            questionsList.appendChild(questionDiv);
         });
 
-        // 重置全选复选框和批量删除按钮状态
-        if (this.selectAllCheckbox) {
-            this.selectAllCheckbox.checked = false;
-        }
+        // 初始化全选和批量删除按钮状态
+        this.updateSelectAllState();
         this.updateBatchDeleteButton();
     }
 
