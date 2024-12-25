@@ -289,6 +289,34 @@ function initAPI() {
                     console.error('获取随机题目失败:', error);
                     return [];
                 }
+            },
+
+            // 管理员登录方法
+            async adminLogin(username, password) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('admins')
+                        .select()
+                        .eq('username', username)
+                        .single();
+
+                    if (error) {
+                        console.error('管理员登录失败:', error);
+                        return false;
+                    }
+
+                    if (data && data.password === password) {
+                        // 设置管理员会话
+                        sessionStorage.setItem('isAdmin', 'true');
+                        sessionStorage.setItem('adminLastActivity', Date.now().toString());
+                        return true;
+                    }
+
+                    return false;
+                } catch (error) {
+                    console.error('管理员登录失败:', error);
+                    return false;
+                }
             }
         };
 

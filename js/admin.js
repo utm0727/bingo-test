@@ -94,12 +94,19 @@ class AdminPanel {
         const password = document.getElementById('password').value;
 
         try {
-            await API.adminLogin(username, password);
-            sessionStorage.setItem('isAdmin', 'true');
-            sessionStorage.setItem('adminLastActivity', Date.now().toString());
-            this.showAdminPanel();
+            console.log('尝试登录:', username);
+            const success = await window.API.adminLogin(username, password);
+            
+            if (success) {
+                console.log('登录成功');
+                this.showAdminPanel();
+            } else {
+                console.error('登录失败：用户名或密码错误');
+                alert('登录失败：用户名或密码错误');
+            }
         } catch (error) {
-            alert('登录失败，请检查用户名和密码');
+            console.error('登录失败:', error);
+            alert('登录失败，请稍后重试');
         }
     }
 
