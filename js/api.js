@@ -389,6 +389,34 @@ function initAPI() {
                     console.error('更新管理员信息失败:', error);
                     throw error;
                 }
+            },
+
+            // 添加获取可用格子大小选项的方法
+            async getAvailableGridSizes() {
+                try {
+                    const { data: questions, error } = await supabaseClient
+                        .from('questions')
+                        .select('*');
+
+                    if (error) throw error;
+
+                    // 获取不重复的题目数量
+                    const uniqueQuestions = new Set(questions.map(q => q.question));
+                    const questionCount = uniqueQuestions.size;
+
+                    // 计算可用的格子大小选项
+                    const availableSizes = [];
+                    for (let size = 3; size <= 7; size++) {
+                        if (questionCount >= size * size) {
+                            availableSizes.push(size);
+                        }
+                    }
+
+                    return availableSizes;
+                } catch (error) {
+                    console.error('获取可用格子大小失败:', error);
+                    return [3]; // 默认至少返回 3x3
+                }
             }
         };
 
