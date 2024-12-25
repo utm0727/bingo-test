@@ -1,6 +1,5 @@
 // 初始化 Supabase 客户端
-const { createClient } = supabase;
-const supabaseClient = createClient(
+const supabaseClient = window.supabase.createClient(
     'https://vwkkwthrkqyjmirsgqoo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
 );
@@ -167,6 +166,36 @@ window.API = {
         } catch (error) {
             console.error('重置数据失败:', error);
             throw error;
+        }
+    },
+
+    // 添加获取排行榜方法
+    async getLeaderboard() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('scores')
+                .select(`
+                    team_name,
+                    score,
+                    created_at,
+                    users (
+                        leader_name
+                    )
+                `)
+                .order('score', { ascending: true })
+                .limit(10);
+
+            if (error) throw error;
+
+            return data.map(score => ({
+                teamName: score.team_name,
+                score: score.score,
+                leaderName: score.users?.leader_name,
+                timestamp: score.created_at
+            }));
+        } catch (error) {
+            console.error('获取排行榜失败:', error);
+            return [];
         }
     }
 };
