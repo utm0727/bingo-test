@@ -99,14 +99,17 @@ class AdminPanel {
         }
 
         try {
-            console.log('尝试登录:', username);
+            console.log('尝试登录:', { username, password });
             const success = await window.API.adminLogin(username, password);
             
             if (success) {
-                console.log('登录成功');
+                console.log('登录成功，显示管理面板');
                 this.showAdminPanel();
+                // 添加登录成功的会话存储
+                sessionStorage.setItem('isAdmin', 'true');
+                sessionStorage.setItem('adminLastActivity', Date.now().toString());
             } else {
-                console.error('登录失败：用户名或密码错误');
+                console.error('登录失败：验证未通过');
                 alert('登录失败：用户名或密码错误');
             }
         } catch (error) {
