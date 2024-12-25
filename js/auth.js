@@ -21,22 +21,15 @@ class Auth {
         const fullPath = window.location.pathname;
         this.logError('当前页面路径:', fullPath);
 
-        // 设置基础URL和仓库名称
-        this.repoName = '/bingo-test';
-        this.isGitHubPages = window.location.hostname.includes('github.io');
+        // 设置基础URL
+        this.baseUrl = fullPath.includes('/bingo-test/pages/') 
+            ? '..'
+            : '.';
         
-        // 根据环境设置基础URL
-        if (this.isGitHubPages) {
-            this.baseUrl = this.repoName;
-        } else {
-            this.baseUrl = '';
-        }
-
         this.logError('环境信息:', {
             fullPath,
             baseUrl: this.baseUrl,
             hostname: window.location.hostname,
-            isGitHubPages: this.isGitHubPages,
             origin: window.location.origin
         });
 
@@ -45,7 +38,7 @@ class Auth {
             const currentUser = localStorage.getItem('currentUser');
             if (!currentUser) {
                 this.logError('游戏页面检测到未登录状态，重定向到登录页面');
-                window.location.href = '../index.html';
+                window.location.href = `${this.baseUrl}/index.html`;
                 return;
             }
         }
@@ -141,41 +134,21 @@ class Auth {
                 localStorage.setItem('currentUser', JSON.stringify(userData));
                 
                 // 构建游戏页面URL
-                let gamePath;
-                if (this.isGitHubPages) {
-                    gamePath = `${this.baseUrl}/pages/game.html`;
-                } else {
-                    gamePath = '/pages/game.html';
-                }
-
-                // 确保路径正确
-                gamePath = gamePath.replace(/\/+/g, '/');
-                if (this.isGitHubPages && !gamePath.startsWith('/')) {
-                    gamePath = '/' + gamePath;
-                }
-
-                const fullGamePath = window.location.origin + gamePath;
+                const gamePath = `${this.baseUrl}/pages/game.html`;
                 
                 this.logError('准备跳转:', {
                     gamePath,
-                    fullGamePath,
-                    origin: window.location.origin,
-                    isGitHubPages: this.isGitHubPages
+                    baseUrl: this.baseUrl,
+                    currentPath: window.location.pathname
                 });
                 
-                setTimeout(() => {
-                    window.location.href = fullGamePath;
-                }, 100);
+                window.location.href = gamePath;
             } else {
                 this.logError('登录失败：无效的用户数据', user);
                 alert('登录失败，请重试');
             }
         } catch (error) {
-            this.logError('登录过程出错:', {
-                error,
-                stack: error.stack,
-                currentLocation: window.location.href
-            });
+            this.logError('登录过程出错:', error);
             alert('登录失败，请重试');
         }
     }
