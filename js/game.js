@@ -203,9 +203,9 @@ class BingoGame {
 
     showTaskModal(index) {
         console.log('显示任务提交对话框');
-        const modal = document.getElementById('taskSubmitModal');
+        const modal = document.getElementById('taskModal');
         const question = document.getElementById('taskQuestion');
-        const form = document.getElementById('taskSubmitForm');
+        const form = document.getElementById('taskForm');
         
         if (!modal || !question || !form) {
             console.error('找不到必要的DOM元素:', {
@@ -248,11 +248,11 @@ class BingoGame {
     }
 
     closeTaskModal() {
-        const modal = document.getElementById('taskSubmitModal');
+        const modal = document.getElementById('taskModal');
         if (modal) {
             modal.classList.add('hidden');
             // 清理表单
-            const form = document.getElementById('taskSubmitForm');
+            const form = document.getElementById('taskForm');
             if (form) {
                 form.reset();
             }
