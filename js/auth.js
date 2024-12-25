@@ -21,26 +21,26 @@ class Auth {
         const fullPath = window.location.pathname;
         this.logError('当前页面路径:', fullPath);
 
-        // 设置基础URL
-        this.baseUrl = '';
+        // 修改基础URL的计算方式
+        const repoName = '/bingo-test';
         
-        if (fullPath.includes('/bingo-test/')) {
-            // 如果在 pages 目录下
-            if (fullPath.includes('/pages/')) {
-                this.baseUrl = '../';
-            } else {
-                // 如果在根目录
-                this.baseUrl = './';
-            }
+        // 检查是否在 GitHub Pages 环境
+        if (window.location.hostname.includes('github.io')) {
+            this.baseUrl = fullPath.includes(`${repoName}/pages/`) 
+                ? '../'
+                : `${repoName}/`;
         } else {
-            // 如果在其他位置
-            this.baseUrl = '/bingo-test/';
+            // 本地开发环境
+            this.baseUrl = fullPath.includes('/pages/') 
+                ? '../'
+                : './';
         }
 
         this.logError('路径信息:', {
             fullPath,
             baseUrl: this.baseUrl,
-            currentLocation: window.location.href
+            hostname: window.location.hostname,
+            isGitHubPages: window.location.hostname.includes('github.io')
         });
 
         // 如果是游戏页面，检查登录状态
@@ -143,20 +143,25 @@ class Auth {
                 
                 localStorage.setItem('currentUser', JSON.stringify(userData));
                 
-                // 修改游戏页面路径的构建
-                let gamePath = this.baseUrl + 'pages/game.html';
+                // 构建游戏页面的完整URL
+                const currentUrl = new URL(window.location.href);
+                const gamePath = currentUrl.pathname.includes('/pages/') 
+                    ? 'game.html'
+                    : 'pages/game.html';
                 
-                // 确保路径正确
-                gamePath = gamePath.replace('//', '/');
+                // 使用 URL API 构建完整路径
+                const baseUrl = currentUrl.pathname.includes('/pages/')
+                    ? new URL('..', currentUrl)
+                    : currentUrl;
+                
+                const fullGamePath = new URL(gamePath, baseUrl).href;
                 
                 this.logError('准备跳转:', {
                     gamePath,
-                    baseUrl: this.baseUrl,
-                    currentLocation: window.location.href
+                    baseUrl: baseUrl.href,
+                    fullGamePath,
+                    currentUrl: currentUrl.href
                 });
-                
-                // 使用完整的 URL
-                const fullGamePath = new URL(gamePath, window.location.origin).href;
                 
                 setTimeout(() => {
                     window.location.href = fullGamePath;
