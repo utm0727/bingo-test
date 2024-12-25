@@ -25,6 +25,40 @@ class AdminPanel {
         }
     }
 
+    // 首先定义基础的状态更新方法
+    updateSelectAllState() {
+        if (!this.selectAllCheckbox) return;
+
+        const checkboxes = document.querySelectorAll('.question-checkbox');
+        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
+        
+        // 如果所有复选框都被选中，则全选框也应该被选中
+        this.selectAllCheckbox.checked = checkboxes.length > 0 && 
+            checkboxes.length === checkedBoxes.length;
+        
+        // 如果没有复选框，禁用全选
+        this.selectAllCheckbox.disabled = checkboxes.length === 0;
+    }
+
+    updateBatchDeleteButton() {
+        if (!this.batchDeleteBtn) return;
+
+        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
+        this.batchDeleteBtn.disabled = checkedBoxes.length === 0;
+    }
+
+    handleSelectAll() {
+        const isChecked = this.selectAllCheckbox.checked;
+        const checkboxes = document.querySelectorAll('.question-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        
+        this.updateBatchDeleteButton();
+    }
+
+    // 然后是其他方法
     init() {
         // 修改登录检查逻辑
         const isAdmin = sessionStorage.getItem('isAdmin');
@@ -455,21 +489,6 @@ class AdminPanel {
             console.error('批量删除失败:', error);
             alert('删除失败，请重试');
         }
-    }
-
-    // 添加更新全选状态的方法
-    updateSelectAllState() {
-        if (!this.selectAllCheckbox) return;
-
-        const checkboxes = document.querySelectorAll('.question-checkbox');
-        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
-        
-        // 如果所有复选框都被选中，则全选框也应该被选中
-        this.selectAllCheckbox.checked = checkboxes.length > 0 && 
-            checkboxes.length === checkedBoxes.length;
-        
-        // 如果没有复选框，禁用全选
-        this.selectAllCheckbox.disabled = checkboxes.length === 0;
     }
 }
 
