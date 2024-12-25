@@ -410,16 +410,21 @@ class AdminPanel {
     // 处理全选
     handleSelectAll() {
         const isChecked = this.selectAllCheckbox.checked;
-        this.questionsList.querySelectorAll('.question-checkbox').forEach(checkbox => {
+        const checkboxes = document.querySelectorAll('.question-checkbox');
+        
+        checkboxes.forEach(checkbox => {
             checkbox.checked = isChecked;
         });
+        
         this.updateBatchDeleteButton();
     }
 
     // 更新批量删除按钮状态
     updateBatchDeleteButton() {
-        const checkedCount = this.questionsList.querySelectorAll('.question-checkbox:checked').length;
-        this.batchDeleteBtn.disabled = checkedCount === 0;
+        if (!this.batchDeleteBtn) return;
+
+        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
+        this.batchDeleteBtn.disabled = checkedBoxes.length === 0;
     }
 
     // 处理批量删除
@@ -450,6 +455,21 @@ class AdminPanel {
             console.error('批量删除失败:', error);
             alert('删除失败，请重试');
         }
+    }
+
+    // 添加更新全选状态的方法
+    updateSelectAllState() {
+        if (!this.selectAllCheckbox) return;
+
+        const checkboxes = document.querySelectorAll('.question-checkbox');
+        const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
+        
+        // 如果所有复选框都被选中，则全选框也应该被选中
+        this.selectAllCheckbox.checked = checkboxes.length > 0 && 
+            checkboxes.length === checkedBoxes.length;
+        
+        // 如果没有复选框，禁用全选
+        this.selectAllCheckbox.disabled = checkboxes.length === 0;
     }
 }
 
