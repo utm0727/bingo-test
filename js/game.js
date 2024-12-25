@@ -291,10 +291,21 @@ class BingoGame {
                         throw new Error('文件大小不能超过 50MB');
                     }
 
-                    submission.file = file;  // 临时保存文件对象
+                    // 尝试上传文件
+                    const filePath = await window.API.uploadTaskFile(
+                        this.currentUser.team_name,
+                        this.board[this.currentTaskIndex].id,
+                        file
+                    );
+
+                    if (filePath) {
+                        submission.filePath = filePath;
+                    } else {
+                        throw new Error('文件上传失败');
+                    }
                 } catch (error) {
                     console.error('文件处理失败:', error);
-                    if (!confirm('文件处理失败：' + error.message + '\n是否继续提交文字说明？')) {
+                    if (!confirm('文件上传失败。是否继续提交文字说明？')) {
                         return;
                     }
                 }
@@ -304,28 +315,20 @@ class BingoGame {
             this.board[this.currentTaskIndex].completed = true;
             this.board[this.currentTaskIndex].submission = submission;
 
-            try {
-                // 保存进度
-                await this.saveProgress();
+            // 保存进度
+            await this.saveProgress();
 
-                // 关闭对话框
-                this.closeTaskModal();
+            // 关闭对话框
+            this.closeTaskModal();
 
-                // 更新界面
-                this.updateUI();
+            // 更新界面
+            this.updateUI();
 
-                // 检查是否完成 Bingo
-                if (this.checkBingo()) {
-                    this.isBingo = true;
-                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
-                    await this.handleGameComplete(totalTime);
-                }
-            } catch (error) {
-                console.error('保存进度失败:', error);
-                // 回滚状态
-                this.board[this.currentTaskIndex].completed = false;
-                delete this.board[this.currentTaskIndex].submission;
-                throw error;
+            // 检查是否完成 Bingo
+            if (this.checkBingo()) {
+                this.isBingo = true;
+                const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                await this.handleGameComplete(totalTime);
             }
         } catch (error) {
             console.error('提交任务失败:', error);
