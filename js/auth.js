@@ -4,17 +4,23 @@ class Auth {
         this.loginForm = document.getElementById('loginForm');
         console.log('登录表单元素:', this.loginForm);
         
+        // 获取当前页面的基础URL
+        this.baseUrl = window.location.pathname.includes('/pages/') 
+            ? '../'
+            : './';
+        console.log('基础URL:', this.baseUrl);
+
         // 检查是否已登录，并确保数据完整性
         const currentUser = localStorage.getItem('currentUser');
         console.log('当前存储的用户信息:', currentUser);
         
         if (currentUser) {
             try {
-                // 验证用户数据的完整性
                 const userData = JSON.parse(currentUser);
                 if (userData && userData.team_name) {
                     console.log('检测到有效的用户信息:', userData);
-                    window.location.replace('pages/game.html');
+                    // 使用正确的路径
+                    window.location.replace(this.baseUrl + 'pages/game.html');
                     return;
                 } else {
                     console.warn('用户数据无效，清除存储');
@@ -89,7 +95,7 @@ class Auth {
             const user = await window.API.login(teamNameValue, leaderNameValue);
             console.log('API 登录响应:', user);
             
-            if (user && user.team_name) {  // 确保返回的用户数据包含 team_name
+            if (user && user.team_name) {
                 console.log('登录成功，保存用户信息:', user);
                 
                 // 确保保存完整的用户信息
@@ -109,7 +115,8 @@ class Auth {
                 
                 if (savedData) {
                     console.log('准备重定向到游戏页面');
-                    window.location.replace('pages/game.html');
+                    // 使用正确的路径
+                    window.location.replace(this.baseUrl + 'pages/game.html');
                 } else {
                     throw new Error('用户数据保存失败');
                 }
