@@ -14,14 +14,16 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 添加写入权限
     steps:
-      - name: Checkout
+      - name: Checkout 🛎️
         uses: actions/checkout@v4
         with:
-          submodules: false
-          persist-credentials: false
+          submodules: false  # 明确禁用子模块
+          fetch-depth: 0     # 获取完整历史记录
 
-      - name: Deploy
+      - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: .
