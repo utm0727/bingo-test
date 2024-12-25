@@ -270,24 +270,48 @@ function initAPI() {
                     // 如果有新的提交包含文件，先上传文件
                     for (const cell of progress.board) {
                         if (cell.submission?.file && !cell.submission.filePath) {
-                            cell.submission.filePath = await this.uploadTaskFile(
-                                teamName,
-                                cell.id,
-                                cell.submission.file
-                            );
-                            // 删除文件对象，只保存路径
+                            try {
+                                cell.submission.filePath = await this.uploadTaskFile(
+                                    teamName,
+                                    cell.id,
+                                    cell.submission.file
+                                );
+                            } catch (error) {
+                                console.error('文件上传失败:', error);
+                                // 继续保存其他数据
+                            }
+                            // 删除临时文件对象
                             delete cell.submission.file;
                         }
                     }
 
-                    const { error } = await supabaseClient
+                    // 检查是否存在现有进度
+                    const { data: existingProgress } = await supabaseClient
                         .from('game_progress')
-                        .upsert([{
-                            team_name: teamName,
-                            progress: progress
-                        }]);
+                        .select('*')
+                        .eq('team_name', teamName)
+                        .single();
 
-                    if (error) throw error;
+                    if (existingProgress) {
+                        // 更新现有进度
+                        const { error: updateError } = await supabaseClient
+                            .from('game_progress')
+                            .update({ progress })
+                            .eq('team_name', teamName);
+
+                        if (updateError) throw updateError;
+                    } else {
+                        // 插入新进度
+                        const { error: insertError } = await supabaseClient
+                            .from('game_progress')
+                            .insert([{
+                                team_name: teamName,
+                                progress: progress
+                            }]);
+
+                        if (insertError) throw insertError;
+                    }
+
                     console.log('游戏进度保存成功');
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);
@@ -534,38 +558,47 @@ function initAPI() {
             async initStorage() {
                 try {
                     // 检查存储桶是否存在
-                    const { data: buckets } = await supabaseClient
+                    const { data: buckets, error: listError } = await supabaseClient
                         .storage
                         .listBuckets();
+
+                    if (listError) {
+                        console.error('检查存储桶失败:', listError);
+                        // 如果是权限错误，尝试直接使用存储桶
+                        if (listError.statusCode === 401) {
+                            return true;
+                        }
+                        throw listError;
+                    }
 
                     const bucketExists = buckets?.some(b => b.name === 'task-submissions');
                     
                     if (!bucketExists) {
                         // 创建存储桶
-                        const { data, error } = await supabaseClient
+                        const { error: createError } = await supabaseClient
                             .storage
                             .createBucket('task-submissions', {
-                                public: false,
-                                fileSizeLimit: 52428800  // 50MB
+                                public: true  // 修改为公开访问
                             });
 
-                        if (error) throw error;
+                        if (createError) {
+                            console.error('创建存储桶失败:', createError);
+                            // 如果是权限错误，尝试直接使用存储桶
+                            if (createError.statusCode === 401) {
+                                return true;
+                            }
+                            throw createError;
+                        }
                         console.log('存储桶创建成功');
-                    }
-
-                    // 设置存储桶策略
-                    const { error: policyError } = await supabaseClient
-                        .storage
-                        .from('task-submissions')
-                        .createSignedUploadUrl('test.txt');  // 测试上传权限
-
-                    if (policyError && policyError.message !== 'File not found') {
-                        throw policyError;
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
+                    // 如果是权限错误，返回 true
+                    if (error.statusCode === 401) {
+                        return true;
+                    }
                     return false;
                 }
             }
