@@ -334,6 +334,31 @@ function initAPI() {
                     console.error('管理员登录失败:', error);
                     return false;
                 }
+            },
+
+            // 添加更新管理员凭证的方法
+            async updateAdminCredentials(username, password) {
+                try {
+                    console.log('正在更新管理员信息:', { username });
+                    const { error } = await supabaseClient
+                        .from('admins')
+                        .update({ 
+                            username: username,
+                            password: password 
+                        })
+                        .eq('username', 'admin'); // 更新默认管理员账户
+
+                    if (error) {
+                        console.error('更新管理员信息失败:', error);
+                        throw error;
+                    }
+
+                    console.log('管理员信息更新成功');
+                    return true;
+                } catch (error) {
+                    console.error('更新管理员信息失败:', error);
+                    throw error;
+                }
             }
         };
 
