@@ -336,21 +336,33 @@ function initAPI() {
                 }
             },
 
-            // 添加更新管理员凭证的方法
+            // 修改更新管理员凭证的方法
             async updateAdminCredentials(username, password) {
                 try {
                     console.log('正在更新管理员信息:', { username });
-                    const { error } = await supabaseClient
+                    
+                    // 1. 删除所有现有管理员账户
+                    const { error: deleteError } = await supabaseClient
                         .from('admins')
-                        .update({ 
-                            username: username,
-                            password: password 
-                        })
-                        .eq('username', 'admin'); // 更新默认管理员账户
+                        .delete()
+                        .not('id', 'is', null); // 删除所有记录
 
-                    if (error) {
-                        console.error('更新管理员信息失败:', error);
-                        throw error;
+                    if (deleteError) {
+                        console.error('删除现有管理员失败:', deleteError);
+                        throw deleteError;
+                    }
+
+                    // 2. 插入新的管理员账户
+                    const { error: insertError } = await supabaseClient
+                        .from('admins')
+                        .insert([{
+                            username: username,
+                            password: password
+                        }]);
+
+                    if (insertError) {
+                        console.error('创建新管理员失败:', insertError);
+                        throw insertError;
                     }
 
                     console.log('管理员信息更新成功');
