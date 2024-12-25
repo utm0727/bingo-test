@@ -1,3 +1,9 @@
+// 初始化 Supabase 客户端
+const supabase = createClient(
+    'https://vwkkwthrkqyjmirsgqoo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
+);
+
 const API = {
     // 使用 localStorage 模拟数据存储
     storage: {
@@ -21,31 +27,59 @@ const API = {
 
     // 用户登录
     async login(teamName, leaderName) {
-        const user = {
-            id: Date.now(),
-            teamName,
-            leaderName,
-            timestamp: new Date().toISOString()
-        };
-        this.storage.users.push(user);
-        this.save();
-        return user;
+        try {
+            // 检查用户是否存在
+            const { data: existingUser } = await supabase
+                .from('users')
+                .select()
+                .eq('team_name', teamName)
+                .single();
+
+            if (existingUser) {
+                return existingUser;
+            }
+
+            // 创建新用户
+            const { data: newUser, error } = await supabase
+                .from('users')
+                .insert([
+                    {
+                        team_name: teamName,
+                        leader_name: leaderName,
+                        created_at: new Date().toISOString()
+                    }
+                ])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return newUser;
+        } catch (error) {
+            console.error('登录失败:', error);
+            throw error;
+        }
     },
 
     // 管理员登录
     async adminLogin(username, password) {
-        // 获取保存的管理员凭据
-        const savedCredentials = localStorage.getItem('admin-credentials');
-        if (savedCredentials) {
-            const admin = JSON.parse(savedCredentials);
-            if (username === admin.username && password === admin.password) {
+        try {
+            const { data: admin, error } = await supabase
+                .from('admins')
+                .select()
+                .eq('username', username)
+                .single();
+
+            if (error) throw error;
+
+            // 这里应该使用proper密码比较，但为了演示先用简单判断
+            if (admin && admin.password === password) {
                 return { isAdmin: true };
             }
-        } else if (username === 'admin' && password === 'admin123') {
-            // 首次登录使用默认凭据
-            return { isAdmin: true };
+            throw new Error('Invalid credentials');
+        } catch (error) {
+            console.error('管理员登录失败:', error);
+            throw error;
         }
-        throw new Error('Invalid credentials');
     },
 
     // 获取题目列表
@@ -73,27 +107,53 @@ const API = {
 
     // 更新分数
     async updateScore(teamName, score) {
-        this.storage.scores.push({
-            teamName,
-            score,
-            timestamp: new Date().toISOString()
-        });
-        this.save();
+        try {
+            const { data, error } = await supabase
+                .from('scores')
+                .insert([
+                    {
+                        teamName,
+                        score,
+                        created_at: new Date().toISOString()
+                    }
+                ]);
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('更新分数失败:', error);
+            throw error;
+        }
     },
 
     // 获取排行榜
     async getLeaderboard() {
-        const scores = this.storage.scores
-            .map(score => {
-                const user = this.storage.users.find(u => u.teamName === score.teamName);
-                return {
-                    ...score,
-                    leaderName: user?.leaderName
-                };
-            })
-            .sort((a, b) => a.score - b.score)
-            .slice(0, 10);
-        return scores;
+        try {
+            const { data, error } = await supabase
+                .from('scores')
+                .select(`
+                    team_name,
+                    score,
+                    created_at,
+                    users (
+                        leader_name
+                    )
+                `)
+                .order('score', { ascending: true })
+                .limit(10);
+
+            if (error) throw error;
+
+            return data.map(score => ({
+                teamName: score.team_name,
+                score: score.score,
+                leaderName: score.users?.leader_name,
+                timestamp: score.created_at
+            }));
+        } catch (error) {
+            console.error('获取排行榜失败:', error);
+            return [];
+        }
     },
 
     // 更新管理员信息
@@ -155,50 +215,22 @@ const API = {
     // 修改 saveGameProgress 方法
     async saveGameProgress(teamName, progress) {
         try {
-            // 压缩数据
-            const compressedProgress = this.compressData(progress);
-            
-            try {
-                // 尝试直接保存
-                localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError') {
-                    console.log('存储空间不足，尝试清理...');
-                    
-                    // 清理旧数据
-                    const keys = Object.keys(localStorage);
-                    for (const key of keys) {
-                        // 清理超过24小时的游戏进度
-                        if (key.startsWith('game-progress-')) {
-                            try {
-                                const savedData = JSON.parse(localStorage.getItem(key));
-                                const timestamp = new Date(savedData.lastSaveTime).getTime();
-                                if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
-                                    localStorage.removeItem(key);
-                                }
-                            } catch (err) {
-                                // 如果数据解析失败，直接删除
-                                localStorage.removeItem(key);
-                            }
-                        }
+            const { data, error } = await supabase
+                .from('game_progress')
+                .upsert([
+                    {
+                        team_name: teamName,
+                        progress: this.compressData(progress),
+                        updated_at: new Date().toISOString()
                     }
+                ], {
+                    onConflict: 'team_name'
+                });
 
-                    // 再次尝试保存
-                    try {
-                        localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
-                    } catch (finalError) {
-                        // 如果还是失败，清理当前团队的进度并保存
-                        localStorage.removeItem(`game-progress-${teamName}`);
-                        localStorage.setItem(`game-progress-${teamName}`, JSON.stringify(compressedProgress));
-                    }
-                } else {
-                    throw e;
-                }
-            }
-            
+            if (error) throw error;
             return true;
         } catch (error) {
-            console.error('API: 保存游戏进度失败:', error);
+            console.error('保存游戏进度失败:', error);
             throw error;
         }
     },
@@ -209,30 +241,18 @@ const API = {
             console.error('teamName 不能为空');
             return null;
         }
+
         try {
-            const key = `game-progress-${teamName}`;
-            const progressData = localStorage.getItem(key);
-            
-            if (progressData) {
-                const progress = JSON.parse(progressData);
-                
-                // 如果有完成时间戳，检查是否超过24小时
-                if (progress.completedAt) {
-                    const now = Date.now();
-                    const hoursSinceCompletion = (now - progress.completedAt) / (1000 * 60 * 60);
-                    
-                    if (hoursSinceCompletion >= 24) {
-                        // 如果超过24小时，删除进度
-                        localStorage.removeItem(key);
-                        return null;
-                    }
-                }
-                
-                return progress;
-            }
-            return null;
+            const { data, error } = await supabase
+                .from('game_progress')
+                .select('progress')
+                .eq('teamName', teamName)
+                .single();
+
+            if (error) return null;
+            return data?.progress || null;
         } catch (error) {
-            console.error('API: 获取游戏进度失败:', error);
+            console.error('获取游戏进度失败:', error);
             return null;
         }
     },
@@ -329,5 +349,7 @@ const API = {
     }
 };
 
-// 初始化 API
-API.init(); 
+// 不再需要初始化本地存储
+// API.init();
+
+export default API; 
