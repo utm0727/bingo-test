@@ -1,48 +1,73 @@
 class Auth {
     constructor() {
-        console.log('Auth 类初始化开始');
+        // 添加错误日志数组
+        this.errorLogs = [];
+        this.logError('Auth 类初始化开始');
+        
         this.loginForm = document.getElementById('loginForm');
-        console.log('登录表单元素:', this.loginForm);
+        this.logError('登录表单元素:', this.loginForm);
         
         // 获取当前页面的基础URL
-        this.baseUrl = window.location.pathname.includes('/pages/') 
+        const fullPath = window.location.pathname;
+        this.baseUrl = fullPath.includes('/bingo-test/pages/') 
             ? '../'
-            : './';
-        console.log('基础URL:', this.baseUrl);
+            : fullPath.includes('/bingo-test/') 
+                ? './'
+                : '/bingo-test/';
+        this.logError('当前路径信息:', {
+            fullPath,
+            baseUrl: this.baseUrl
+        });
 
-        // 检查是否已登录，并确保数据完整性
+        // 检查是否已登录
         const currentUser = localStorage.getItem('currentUser');
-        console.log('当前存储的用户信息:', currentUser);
+        this.logError('当前存储的用户信息:', currentUser);
         
         if (currentUser) {
             try {
                 const userData = JSON.parse(currentUser);
                 if (userData && userData.team_name) {
-                    console.log('检测到有效的用户信息:', userData);
-                    // 使用正确的路径
-                    window.location.replace(this.baseUrl + 'pages/game.html');
+                    this.logError('检测到有效的用户信息，准备跳转:', {
+                        userData,
+                        targetUrl: this.baseUrl + 'pages/game.html'
+                    });
+                    window.location.href = this.baseUrl + 'pages/game.html';
                     return;
                 } else {
-                    console.warn('用户数据无效，清除存储');
+                    this.logError('用户数据无效，清除存储');
                     localStorage.removeItem('currentUser');
                 }
             } catch (error) {
-                console.error('解析用户数据失败，清除存储:', error);
+                this.logError('解析用户数据失败:', error);
                 localStorage.removeItem('currentUser');
             }
         }
 
         // 等待 API 准备好再初始化
         if (window.API) {
-            console.log('API 已就绪，直接初始化');
+            this.logError('API 已就绪，直接初始化');
             this.init();
         } else {
-            console.log('等待 API 准备...');
+            this.logError('等待 API 准备...');
             window.addEventListener('APIReady', () => {
-                console.log('收到 API 就绪事件，开始初始化');
+                this.logError('收到 API 就绪事件，开始初始化');
                 this.init();
             });
         }
+    }
+
+    // 添加错误日志方法
+    logError(message, data = null) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            message,
+            data
+        };
+        this.errorLogs.push(logEntry);
+        console.log(`[${logEntry.timestamp}] ${message}`, data);
+        
+        // 保存到 localStorage
+        localStorage.setItem('authErrorLogs', JSON.stringify(this.errorLogs));
     }
 
     init() {
@@ -61,18 +86,20 @@ class Auth {
     }
 
     async handleLogin() {
-        console.log('开始处理登录请求');
+        this.logError('开始处理登录请求');
         try {
             const teamName = document.getElementById('teamName');
             const leaderName = document.getElementById('leaderName');
             
-            console.log('表单元素:', {
-                teamNameElement: teamName,
-                leaderNameElement: leaderName
+            this.logError('表单元素状态:', {
+                teamNameExists: !!teamName,
+                leaderNameExists: !!leaderName,
+                teamNameValue: teamName?.value,
+                leaderNameValue: leaderName?.value
             });
 
             if (!teamName || !leaderName) {
-                console.error('找不到表单输入元素');
+                this.logError('找不到表单输入元素');
                 alert('系统错误，请刷新页面重试');
                 return;
             }
@@ -80,25 +107,24 @@ class Auth {
             const teamNameValue = teamName.value.trim();
             const leaderNameValue = leaderName.value.trim();
 
-            console.log('表单输入值:', {
-                teamName: teamNameValue,
-                leaderName: leaderNameValue
+            this.logError('处理的表单数据:', {
+                teamNameValue,
+                leaderNameValue
             });
 
             if (!teamNameValue || !leaderNameValue) {
-                console.log('表单验证失败：字段为空');
+                this.logError('表单验证失败：字段为空');
                 alert('请填写所有字段');
                 return;
             }
 
-            console.log('开始调用 API 登录');
+            this.logError('开始调用 API 登录');
             const user = await window.API.login(teamNameValue, leaderNameValue);
-            console.log('API 登录响应:', user);
+            this.logError('API 登录响应:', user);
             
             if (user && user.team_name) {
-                console.log('登录成功，保存用户信息:', user);
+                this.logError('登录成功，准备保存用户信息');
                 
-                // 确保保存完整的用户信息
                 const userData = {
                     team_name: user.team_name,
                     leader_name: user.leader_name,
@@ -107,28 +133,22 @@ class Auth {
                 };
                 
                 localStorage.setItem('currentUser', JSON.stringify(userData));
-                console.log('用户信息已保存到 localStorage:', userData);
+                this.logError('用户信息已保存，准备跳转', {
+                    userData,
+                    targetUrl: this.baseUrl + 'pages/game.html'
+                });
                 
-                // 验证保存是否成功
-                const savedData = localStorage.getItem('currentUser');
-                console.log('验证保存的数据:', savedData);
-                
-                if (savedData) {
-                    console.log('准备重定向到游戏页面');
-                    // 使用正确的路径
-                    window.location.replace(this.baseUrl + 'pages/game.html');
-                } else {
-                    throw new Error('用户数据保存失败');
-                }
+                // 使用 setTimeout 确保日志保存后再跳转
+                setTimeout(() => {
+                    window.location.href = this.baseUrl + 'pages/game.html';
+                }, 100);
             } else {
-                console.error('登录失败：无效的用户数据', user);
+                this.logError('登录失败：无效的用户数据', user);
                 alert('登录失败，请重试');
             }
         } catch (error) {
-            console.error('登录过程出错:', error);
-            console.error('错误详情:', {
-                name: error.name,
-                message: error.message,
+            this.logError('登录过程出错:', {
+                error,
                 stack: error.stack
             });
             alert('登录失败，请重试');
@@ -136,13 +156,11 @@ class Auth {
     }
 }
 
-// 初始化前清理可能的无效数据
-if (!localStorage.getItem('currentUser')) {
-    console.log('清理会话数据');
-    localStorage.clear();
-    sessionStorage.clear();
+// 显示之前的错误日志
+const previousLogs = localStorage.getItem('authErrorLogs');
+if (previousLogs) {
+    console.log('之前的错误日志:', JSON.parse(previousLogs));
 }
 
-console.log('准备初始化 Auth 类');
-window.auth = new Auth();
-console.log('Auth 类已初始化完成'); 
+// 初始化认证
+window.auth = new Auth(); 
