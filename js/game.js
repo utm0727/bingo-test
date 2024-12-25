@@ -92,7 +92,8 @@ class BingoGame {
             
             // 创建新的游戏板
             this.board = questions.map(q => ({
-                question: q.question || '题目加载失败',
+                id: q.id,  // 添加题目ID
+                question: q.question,
                 flipped: false
             }));
             
@@ -145,15 +146,19 @@ class BingoGame {
             // 根据状态添加额外样式
             if (cell.flipped) {
                 cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
-                cellDiv.textContent = cell.question;
+                cellDiv.textContent = cell.question || '题目加载失败';
+                console.log('显示已翻转格子:', index, cell);
             } else {
                 cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
                 cellDiv.textContent = '点击查看题目';
+                console.log('显示未翻转格子:', index);
             }
 
             // 添加点击事件
-            cellDiv.onclick = () => {
+            cellDiv.onclick = (e) => {
+                e.preventDefault();
                 if (!cell.flipped && !this.isBingo) {
+                    console.log('触发格子点击:', index);
                     this.handleCellClick(index);
                 }
             };
@@ -166,7 +171,7 @@ class BingoGame {
 
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
-        if (this.isBingo || this.board[index].flipped) {
+        if (this.isBingo || !this.board[index] || this.board[index].flipped) {
             return;
         }
 
@@ -189,6 +194,9 @@ class BingoGame {
             }
         } catch (error) {
             console.error('处理格子点击失败:', error);
+            // 恢复格子状态
+            this.board[index].flipped = false;
+            this.updateUI();
         }
     }
 
