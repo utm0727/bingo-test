@@ -77,8 +77,13 @@
 
         // 修改 refreshData 函数
         async function refreshData() {
-            if (currentTeam) {
-                await loadTeamData();
+            try {
+                await loadTeams();
+                if (currentTeam) {
+                    await loadTeamData();
+                }
+            } catch (error) {
+                console.error('刷新数据失败:', error);
             }
         }
 
@@ -319,7 +324,7 @@
                                class="text-xs text-indigo-600 hover:text-indigo-500 mt-1"
                                onclick="event.stopPropagation()"
                             >
-                                下载视频
+                                下���视频
                             </a>
                         </div>
                     `;
