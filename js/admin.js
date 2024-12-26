@@ -140,27 +140,27 @@ class AdminPanel {
         const password = document.getElementById('password').value.trim();
 
         if (!username || !password) {
-            alert('用户名和密码不能为空');
+            alert('Username and password cannot be empty');
             return;
         }
 
         try {
-            console.log('尝试登录:', { username, password });
+            console.log('Attempting login:', { username, password });
             const success = await window.API.adminLogin(username, password);
             
             if (success) {
-                console.log('登录成功，显示管理面板');
+                console.log('Login successful, showing admin panel');
                 this.showAdminPanel();
-                // 添加登录成功的会话存储
+                // Add login success session storage
                 sessionStorage.setItem('isAdmin', 'true');
                 sessionStorage.setItem('adminLastActivity', Date.now().toString());
             } else {
-                console.error('登录失败：验证未通过');
-                alert('登录失败：用户名或密码错误');
+                console.error('Login failed: Authentication failed');
+                alert('Login failed: Invalid username or password');
             }
         } catch (error) {
-            console.error('登录失败:', error);
-            alert('登录失败，请稍后重试');
+            console.error('Login failed:', error);
+            alert('Login failed, please try again later');
         }
     }
 
@@ -390,29 +390,29 @@ class AdminPanel {
 
     async handleReset() {
         const confirmed = confirm(
-            '警告：这清除所有数据，包括：\n' +
-            '- 所有游戏进度\n' +
-            '- 所有排行榜记录\n' +
-            '- 所有题目\n\n' +
-            '此操作不可撤销！是否确定继续？'
+            'Warning: This will clear all data, including:\n' +
+            '- All game progress\n' +
+            '- All leaderboard records\n' +
+            '- All tasks\n\n' +
+            'This action cannot be undone! Are you sure you want to continue?'
         );
 
         if (!confirmed) return;
 
         const doubleConfirmed = confirm(
-            '最后确认：\n' +
-            '您确定要重置所有数据吗？'
+            'Final confirmation:\n' +
+            'Are you sure you want to reset all data?'
         );
 
         if (!doubleConfirmed) return;
 
         try {
             await API.resetAllData();
-            alert('所有数据已重置');
-            window.location.reload(); // 刷新页面以显示重置后的状态
+            alert('All data has been reset');
+            window.location.reload(); // Refresh page to show reset state
         } catch (error) {
             console.error('Failed to reset data:', error);
-            alert('重置失败，请重试');
+            alert('Reset failed, please try again');
         }
     }
 
@@ -456,29 +456,29 @@ class AdminPanel {
     async handleBatchDelete() {
         const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
         if (checkedBoxes.length === 0) {
-            alert('请先选择要删除的题目');
+            alert('Please select tasks to delete');
             return;
         }
 
         const confirmMessage = checkedBoxes.length === 1 
-            ? '确定要删除选中的题目吗？' 
-            : `确定要删除选中的 ${checkedBoxes.length} 个题目吗？`;
+            ? 'Are you sure you want to delete the selected task?' 
+            : `Are you sure you want to delete ${checkedBoxes.length} selected tasks?`;
 
         if (!confirm(confirmMessage)) return;
 
         try {
-            // 获取所有选中题目的 ID
+            // Get all selected task IDs
             const questionIds = Array.from(checkedBoxes).map(cb => cb.dataset.id);
             
-            // 使用批量删除方法一次性删除所有选中的题目
+            // Use batch delete method to delete all selected tasks at once
             await window.API.batchDeleteQuestions(questionIds);
             
-            // 重新加载题目列表
+            // Reload task list
             await this.loadQuestions();
-            alert('选中的题目已删除');
+            alert('Selected tasks have been deleted');
         } catch (error) {
-            console.error('批量删除失败:', error);
-            alert('删除失败，请重试');
+            console.error('Batch delete failed:', error);
+            alert('Delete failed, please try again');
         }
     }
 
@@ -521,12 +521,12 @@ class AdminPanel {
 
 // 修改登出函数
 function handleLogout() {
-    if (confirm('确定要退出登录吗？')) {
-        // 清理定时器
+    if (confirm('Are you sure you want to logout?')) {
+        // Clear timers
         if (window.adminPanel) {
             window.adminPanel.cleanup();
         }
-        // 清除所有管理员相关的状态
+        // Clear all admin-related states
         window.adminPanel.clearAdminSession();
         window.location.href = '../index.html';
     }
