@@ -218,44 +218,34 @@ async function initAPI() {
             // 获取排行榜
             async getLeaderboard() {
                 try {
-                    console.log('开始获取排行榜数据');
-                    
-                    // 从 leaderboard 表获取数据
-                    const { data, error } = await supabaseClient
+                    // 获取排行榜数据
+                    const { data: leaderboardData, error: leaderboardError } = await supabaseClient
                         .from('leaderboard')
-                        .select('*', {
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
-                            }
-                        })
+                        .select('*')
                         .order('completion_time', { ascending: true });
 
-                    if (error) {
-                        console.error('获取排行榜数据失败:', error);
-                        return [];
-                    }
+                    if (leaderboardError) throw leaderboardError;
 
-                    console.log('原始排行榜数据:', data);
+                    // 获取用户数据
+                    const { data: userData, error: userError } = await supabaseClient
+                        .from('users')
+                        .select('team_name, leader_name');
 
-                    // 确保数据存在且是数组
-                    if (!data || !Array.isArray(data)) {
-                        console.log('没有找到排行榜数据');
-                        return [];
-                    }
+                    if (userError) throw userError;
 
-                    // 格式化数据
-                    const formattedData = data.map(entry => ({
-                        team_name: entry.team_name,
-                        completion_time: entry.completion_time
-                    }));
+                    // 将用户数据与排行榜数据合并
+                    const mergedData = leaderboardData.map(leaderboardEntry => {
+                        const userEntry = userData.find(user => user.team_name === leaderboardEntry.team_name);
+                        return {
+                            ...leaderboardEntry,
+                            leader_name: userEntry ? userEntry.leader_name : ''
+                        };
+                    });
 
-                    console.log('格式化后的排行榜数据:', formattedData);
-                    return formattedData;
+                    return mergedData;
                 } catch (error) {
-                    console.error('获取排行榜失败:', error);
-                    return [];
+                    console.error('Error fetching leaderboard:', error);
+                    throw error;
                 }
             },
 
@@ -644,7 +634,7 @@ async function initAPI() {
                         console.error('获取存储桶文件列表失败:', listFilesError);
                         // 继续执行，因为这可能只是权限问题
                     } else {
-                        console.log('存储桶访问正常，当前文件数:', files?.length || 0);
+                        console.log('���储桶访问正常，当前文件数:', files?.length || 0);
                     }
 
                     return true;
