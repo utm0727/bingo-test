@@ -184,17 +184,15 @@ class BingoGame {
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
         
-        if (!this.board[index]) return;
-
         // 如果游戏已完成，不允许任何修改
         if (this.isBingo) {
-            console.log('游戏已完成，无法修改');
             return;
         }
 
+        if (!this.board[index]) return;
+
         // 如果已完成但游戏未结束，允许修改
         if (this.board[index].completed) {
-            console.log('允许修改已完成的任务');
             this.showTaskModal(index, true); // 传入 true 表示是修改模式
             return;
         }
@@ -215,13 +213,11 @@ class BingoGame {
     showTaskModal(index, isEdit = false) {
         console.log('显示任务提交对话框', { index, isEdit });
         const modal = document.getElementById('taskModal');
-        const modalTitle = document.querySelector('#taskModal h2');
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
         const description = document.getElementById('taskDescription');
         const filePreview = document.getElementById('filePreview');
         const fileName = document.getElementById('fileName');
-        const submitButton = document.querySelector('#taskForm button[type="submit"]');
         
         if (!modal || !question || !form) {
             console.error('找不到必要的DOM元素');
@@ -234,15 +230,6 @@ class BingoGame {
         // 显示题目
         question.textContent = this.board[index].question;
 
-        // 更新标题和按钮文本
-        if (isEdit) {
-            modalTitle.textContent = '修改任务';
-            submitButton.textContent = '保存修改';
-        } else {
-            modalTitle.textContent = '提交任务';
-            submitButton.textContent = '提交任务';
-        }
-
         // 如果是编辑模式，填充已有内容
         if (isEdit && this.board[index].submission) {
             const submission = this.board[index].submission;
@@ -253,9 +240,9 @@ class BingoGame {
             fileInput.value = '';
             
             // 如果有已提交的文件，显示文件名
-            if (submission.fileType) {
+            if (submission.filePath) {
                 filePreview.classList.remove('hidden');
-                fileName.textContent = '已上传文件';
+                fileName.textContent = submission.fileName || '已上传文件';
             } else {
                 filePreview.classList.add('hidden');
             }
@@ -296,13 +283,13 @@ class BingoGame {
         if (this.currentTaskIndex === null) return;
 
         try {
-            const description = document.getElementById('taskDescription').value;
+            const description = document.getElementById('taskDescription').value.trim();
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
             // 检查是否至少有一项内容（文字说明或文件）
-            if (!description.trim() && !file) {
-                alert('请填写任务完成说明或上传文件');
+            if (!description && !file) {
+                alert('请至少填写任务完成说明或上传文件');
                 return;
             }
 
@@ -312,11 +299,11 @@ class BingoGame {
             };
 
             // 如果有文字说明，添加到提交中
-            if (description.trim()) {
-                submission.description = description.trim();
+            if (description) {
+                submission.description = description;
             }
 
-            // 如果有文件，添加到提交中
+            // 如果有文件，处理文件上传
             if (file) {
                 try {
                     // 添加文件大小检查
@@ -329,8 +316,11 @@ class BingoGame {
                         throw new Error('只支持图片或视频文件');
                     }
 
-                    submission.file = file;
+                    // 将文件转换为 Base64
+                    const base64File = await this.fileToBase64(file);
+                    submission.fileData = base64File;
                     submission.fileType = file.type;
+                    submission.fileName = file.name;
                 } catch (error) {
                     console.error('文件处理失败:', error);
                     alert(error.message);
@@ -343,8 +333,9 @@ class BingoGame {
             this.board[this.currentTaskIndex].submission = submission;
 
             try {
-                // 保存进度（包括文件上传）
+                // 保存进度
                 await this.saveProgress();
+                console.log('任务提交成功，包含文件:', !!file);
 
                 // 关闭对话框
                 this.closeTaskModal();
@@ -486,6 +477,20 @@ class BingoGame {
             console.error('查看文件失败:', error);
             alert('获取文件失败，请重试');
         }
+    }
+
+    async fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result;
+                resolve(base64String);
+            };
+            reader.onerror = (event) => {
+                reject(event);
+            };
+            reader.readAsDataURL(file);
+        });
     }
 }
 
