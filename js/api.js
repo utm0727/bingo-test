@@ -703,10 +703,7 @@ function initAPI() {
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .upload(fileName, file, {
-                            contentType: file.type,
-                            upsert: true
-                        });
+                        .upload(fileName, file);
 
                     if (uploadError) {
                         console.error('上传错误:', uploadError);
@@ -717,12 +714,7 @@ function initAPI() {
                     const { data: { publicUrl } } = supabaseClient
                         .storage
                         .from('submissions')
-                        .getPublicUrl(fileName, {
-                            download: false,
-                            transform: {
-                                quality: 100
-                            }
-                        });
+                        .getPublicUrl(fileName);
 
                     console.log('文件上传成功:', {
                         fileName,
