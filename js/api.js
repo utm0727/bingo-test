@@ -7,6 +7,45 @@ class API {
         );
     }
 
+    async login(teamName, leaderName) {
+        try {
+            const { data: existingUser, error: selectError } = await this.supabase
+                .from('users')
+                .select('*')
+                .eq('team_name', teamName)
+                .maybeSingle();
+
+            if (selectError) {
+                console.error('Failed to query user:', selectError);
+                return null;
+            }
+
+            let user = existingUser;
+            if (!user) {
+                const { data: newUser, error: insertError } = await this.supabase
+                    .from('users')
+                    .insert([{
+                        team_name: teamName,
+                        leader_name: leaderName,
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error('Failed to create user:', insertError);
+                    return null;
+                }
+                user = newUser;
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Login failed:', error);
+            return null;
+        }
+    }
+
     async getTasks() {
         try {
             const { data, error } = await this.supabase
