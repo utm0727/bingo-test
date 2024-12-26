@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo 游戏</title>
+    <title>Bingo Game</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -11,10 +11,10 @@
     <div class="min-h-screen py-6 px-4">
         <div class="max-w-4xl mx-auto">
             <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">Bingo 游戏</h1>
+                <h1 class="text-3xl font-bold text-gray-900">Bingo Game</h1>
                 <div class="flex gap-4 items-center">
                     <span id="teamInfo" class="text-gray-600"></span>
-                    <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">查看排行榜</a>
+                    <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">View Leaderboard</a>
                 </div>
             </div>
 
@@ -108,11 +108,11 @@
     <!-- Bingo 完成提示 -->
     <div id="bingoModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">恭喜完成！</h2>
-            <p>用时：<span id="completionTime"></span></p>
+            <h2 class="text-2xl font-bold mb-4">Congratulations！</h2>
+            <p>Time Usage：<span id="completionTime"></span></p>
             <button onclick="window.location.href='leaderboard.html'" 
                 class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded">
-                查看排行榜
+                View Leaderboard
             </button>
         </div>
     </div>
