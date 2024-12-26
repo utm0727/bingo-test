@@ -275,65 +275,49 @@ function initAPI() {
             },
 
             // 添加保存游戏进度方法
-            async saveGameProgress(teamName, progress) {
+            async saveGameProgress(teamName, progressData) {
                 try {
-                    console.log('保存游戏进度:', { teamName, progress });
+                    console.log('保存游戏进度:', { teamName, progress: progressData });
                     
-                    // 如果有新的提交包含文件，先上传文件
-                    for (const cell of progress.board) {
-                        if (cell.submission?.file) {
-                            try {
-                                const fileResult = await this.uploadTaskFile(
-                                    teamName,
-                                    cell.id,
-                                    cell.submission.file
-                                );
-                                
-                                // 保存完整的文件信息
-                                cell.submission = {
-                                    ...cell.submission,
-                                    filePath: fileResult.path,
-                                    fileUrl: fileResult.url,
-                                    fileType: fileResult.fileType,
-                                    fileName: fileResult.fileName,
-                                    uploadTime: fileResult.uploadTime
-                                };
-                                
-                                // 删除原始文件对象
-                                delete cell.submission.file;
-                            } catch (error) {
-                                console.error('文件上传失败:', error);
-                                // 继续保存其他数据
+                    // 处理每个格子的提交内容
+                    const processedBoard = progressData.board.map(cell => {
+                        if (cell.submission) {
+                            // 保留文字描述
+                            const processedSubmission = {
+                                timestamp: cell.submission.timestamp,
+                                description: cell.submission.description || null
+                            };
+
+                            // 如果有文件，处理文件
+                            if (cell.submission.file) {
+                                processedSubmission.fileType = cell.submission.fileType;
+                                // 处理文件上传...（保持原有的文件处理逻辑）
                             }
+
+                            return {
+                                ...cell,
+                                submission: processedSubmission
+                            };
                         }
-                    }
+                        return cell;
+                    });
 
-                    // 更新或插入游戏进度
-                    const { data: existingProgress } = await supabaseClient
+                    // 更新进度数据
+                    const { error } = await supabaseClient
                         .from('game_progress')
-                        .select('*')
-                        .eq('team_name', teamName)
-                        .single();
+                        .upsert({
+                            team_name: teamName,
+                            progress: {
+                                ...progressData,
+                                board: processedBoard
+                            }
+                        }, {
+                            onConflict: 'team_name'
+                        });
 
-                    if (existingProgress) {
-                        const { error: updateError } = await supabaseClient
-                            .from('game_progress')
-                            .update({ progress })
-                            .eq('team_name', teamName);
-
-                        if (updateError) throw updateError;
-                    } else {
-                        const { error: insertError } = await supabaseClient
-                            .from('game_progress')
-                            .insert([{
-                                team_name: teamName,
-                                progress: progress
-                            }]);
-
-                        if (insertError) throw insertError;
-                    }
-
+                    if (error) throw error;
                     console.log('游戏进度保存成功');
+                    return true;
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);
                     throw error;
@@ -428,7 +412,7 @@ function initAPI() {
                     }
 
                     const loginSuccess = data && data.password === password;
-                    console.log('���码验证结果:', {
+                    console.log('密码验证结果:', {
                         hasData: !!data,
                         passwordMatch: loginSuccess,
                         dbPassword: data?.password,

@@ -184,15 +184,17 @@ class BingoGame {
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
         
+        if (!this.board[index]) return;
+
         // 如果游戏已完成，不允许任何修改
         if (this.isBingo) {
+            console.log('游戏已完成，无法修改');
             return;
         }
 
-        if (!this.board[index]) return;
-
         // 如果已完成但游戏未结束，允许修改
         if (this.board[index].completed) {
+            console.log('允许修改已完成的任务');
             this.showTaskModal(index, true); // 传入 true 表示是修改模式
             return;
         }
@@ -240,9 +242,9 @@ class BingoGame {
             fileInput.value = '';
             
             // 如果有已提交的文件，显示文件名
-            if (submission.filePath) {
+            if (submission.fileName) {
                 filePreview.classList.remove('hidden');
-                fileName.textContent = submission.fileName || '已上传文件';
+                fileName.textContent = submission.fileName;
             } else {
                 filePreview.classList.add('hidden');
             }
@@ -260,6 +262,18 @@ class BingoGame {
             e.preventDefault();
             await this.handleTaskSubmit();
         };
+
+        // 更新标题和按钮文本
+        const modalTitle = document.getElementById('modalTitle');
+        const submitButton = document.getElementById('submitButton');
+        
+        if (isEdit) {
+            modalTitle.textContent = '修改任务';
+            submitButton.textContent = '保存修改';
+        } else {
+            modalTitle.textContent = '提交任务';
+            submitButton.textContent = '提交任务';
+        }
     }
 
     closeTaskModal() {
@@ -318,6 +332,7 @@ class BingoGame {
 
                     submission.file = file;
                     submission.fileType = file.type;
+                    submission.fileName = file.name;
                 } catch (error) {
                     console.error('文件处理失败:', error);
                     alert(error.message);
@@ -329,28 +344,20 @@ class BingoGame {
             this.board[this.currentTaskIndex].completed = true;
             this.board[this.currentTaskIndex].submission = submission;
 
-            try {
-                // 保存进度（包括文件上传）
-                await this.saveProgress();
+            // 保存进度
+            await this.saveProgress();
 
-                // 关闭对话框
-                this.closeTaskModal();
+            // 关闭对话框
+            this.closeTaskModal();
 
-                // 更新界面
-                this.updateUI();
+            // 更新界面
+            this.updateUI();
 
-                // 检查是否完成 Bingo
-                if (this.checkBingo()) {
-                    this.isBingo = true;
-                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
-                    await this.handleGameComplete(totalTime);
-                }
-            } catch (error) {
-                console.error('保存进度失败:', error);
-                // 回滚状态
-                this.board[this.currentTaskIndex].completed = false;
-                delete this.board[this.currentTaskIndex].submission;
-                throw error;
+            // 检查是否完成 Bingo
+            if (this.checkBingo()) {
+                this.isBingo = true;
+                const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                await this.handleGameComplete(totalTime);
             }
         } catch (error) {
             console.error('提交任务失败:', error);
