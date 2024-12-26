@@ -319,11 +319,23 @@ class BingoGame {
                         throw new Error('只支持图片或视频文件');
                     }
 
+                    console.log('处理文件上传:', {
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
+
                     // 将文件转换为 Base64
                     const base64File = await this.fileToBase64(file);
                     submission.fileData = base64File;
                     submission.fileType = file.type;
                     submission.fileName = file.name;
+
+                    console.log('文件已转换为 Base64:', {
+                        fileName: file.name,
+                        fileType: file.type,
+                        base64Length: base64File.length
+                    });
                 } catch (error) {
                     console.error('文件处理失败:', error);
                     alert(error.message);
