@@ -110,8 +110,12 @@
         async function updateLeaderboard() {
             try {
                 console.log('开始更新排行榜...');
-                const leaderboard = await window.API.getLeaderboard();
-                console.log('获取到的排行榜数据:', leaderboard);
+                const { data: leaderboard } = await window.supabaseClient
+                    .from('leaderboard')
+                    .select('*')
+                    .order('completion_time', { ascending: true });
+
+                console.log('直接获取的排行榜数据:', leaderboard);
 
                 const tbody = document.getElementById('leaderboardBody');
                 if (!tbody) {
@@ -132,18 +136,12 @@
                     return;
                 }
 
-                // 按完成时间排序
-                const sortedLeaderboard = leaderboard.sort((a, b) => {
-                    return a.completion_time - b.completion_time;
-                });
+                leaderboard.forEach((entry, index) => {
+                    if (!entry || !entry.team_name) return;
 
-                sortedLeaderboard.forEach((entry, index) => {
-                    if (!entry || !entry.completion_time || !entry.team_name) return;
-
-                    // 将毫秒转换为分钟和秒
-                    const totalSeconds = Math.floor(entry.completion_time / 1000);
-                    const minutes = Math.floor(totalSeconds / 60);
-                    const seconds = totalSeconds % 60;
+                    // 计算完成用时
+                    const minutes = Math.floor(entry.completion_time / 60);
+                    const seconds = entry.completion_time % 60;
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
