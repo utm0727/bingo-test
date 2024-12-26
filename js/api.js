@@ -226,11 +226,16 @@ function initAPI() {
                 try {
                     console.log('开始获取排行榜数据');
                     
-                    // 从 leaderboard 表获取数据
+                    // 从 leaderboard 表获取数据，添加 Prefer 头
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
                         .select('*')
-                        .order('completion_time', { ascending: true });
+                        .order('completion_time', { ascending: true })
+                        .headers({
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        });
 
                     if (error) {
                         console.error('获取排行榜数据失败:', error);
@@ -296,7 +301,11 @@ function initAPI() {
                             // 如果有文件数据，上传到 Storage
                             if (cell.submission.fileData) {
                                 try {
-                                    const fileName = `${teamName}/${Date.now()}-${encodeURIComponent(cell.submission.fileName).replace(/%20/g, '_')}`;
+                                    // 生成安全的文件名
+                                    const timestamp = Date.now();
+                                    const originalName = cell.submission.fileName;
+                                    const fileExt = originalName.split('.').pop().toLowerCase();
+                                    const safeFileName = `${teamName}_${timestamp}.${fileExt}`;
                                     
                                     // 从 base64 转换为 Blob
                                     const base64Data = cell.submission.fileData.split(',')[1];
@@ -306,7 +315,7 @@ function initAPI() {
                                     const { data, error: uploadError } = await supabaseClient
                                         .storage
                                         .from('submissions')
-                                        .upload(fileName, blob, {
+                                        .upload(safeFileName, blob, {
                                             contentType: cell.submission.fileType,
                                             upsert: true
                                         });
@@ -317,10 +326,11 @@ function initAPI() {
                                     const { data: { publicUrl } } = supabaseClient
                                         .storage
                                         .from('submissions')
-                                        .getPublicUrl(fileName);
+                                        .getPublicUrl(safeFileName);
 
                                     processedSubmission.fileUrl = publicUrl;
-                                    processedSubmission.fileName = cell.submission.fileName;
+                                    processedSubmission.fileName = originalName; // 保存原始文件名用于显示
+                                    processedSubmission.storagePath = safeFileName; // 保存存储路径
                                     processedSubmission.fileType = cell.submission.fileType;
                                 } catch (error) {
                                     console.error('文件上传失败:', error);
