@@ -144,7 +144,10 @@ class BingoGame {
             // 创建正面
             const front = document.createElement('div');
             front.className = 'cell-front';
-            front.textContent = index + 1;
+            front.innerHTML = `
+                <div class="text-2xl font-bold">${index + 1}</div>
+                <div class="text-lg">${cell.question}</div>
+            `;
             
             // 创建背面
             const back = document.createElement('div');
@@ -171,27 +174,15 @@ class BingoGame {
                 }
 
                 // 添加文件预览
-                if (submission.fileUrl) {
+                if (submission.fileUrl || submission.fileName) {
                     const fileInfo = document.createElement('p');
                     fileInfo.className = 'text-indigo-600 cursor-pointer hover:text-indigo-500';
-                    fileInfo.textContent = 'View Submission';
+                    fileInfo.textContent = submission.fileName || 'View Submission';
                     fileInfo.onclick = (e) => {
                         e.stopPropagation();
                         this.viewSubmission(index);
                     };
                     preview.appendChild(fileInfo);
-                }
-
-                // 如果游戏未完成，添加修改按钮
-                if (!this.isBingo) {
-                    const editButton = document.createElement('button');
-                    editButton.className = 'mt-2 text-sm text-blue-600 hover:text-blue-700';
-                    editButton.textContent = 'Edit Submission';
-                    editButton.onclick = (e) => {
-                        e.stopPropagation();
-                        this.showTaskModal(index, true);
-                    };
-                    preview.appendChild(editButton);
                 }
 
                 back.appendChild(preview);
@@ -332,17 +323,22 @@ class BingoGame {
             // 如果有文件，处理文件上传
             if (file) {
                 try {
+                    // 生成唯一的文件名
+                    const fileExt = file.name.split('.').pop();
+                    const uniqueFileName = `${this.currentUser.team_name}_${this.board[this.currentTaskIndex].id}_${Date.now()}.${fileExt}`;
+
                     console.log('File prepared for upload:', {
-                        fileName: file.name,
+                        originalName: file.name,
+                        uniqueFileName,
                         fileType: file.type,
                         fileSize: file.size
                     });
 
-                    // 将文件转换为 Base64
-                    const base64File = await this.fileToBase64(file);
-                    submission.fileData = base64File;
-                    submission.fileType = file.type;
+                    // 上传文件并获取URL
+                    const fileUrl = await window.API.uploadFile(file, uniqueFileName);
+                    submission.fileUrl = fileUrl;
                     submission.fileName = file.name;
+                    submission.fileType = file.type;
                 } catch (error) {
                     console.error('File processing failed:', error);
                     throw new Error('Failed to process file');
@@ -355,13 +351,8 @@ class BingoGame {
                 this.board[this.currentTaskIndex].submission = submission;
 
                 // 保存进度
-                try {
-                    await this.saveProgress();
-                    console.log('任务提交成功，包含文件:', !!file);
-                } catch (error) {
-                    console.error('保存进度失败:', error);
-                    throw new Error('Failed to save progress');
-                }
+                await this.saveProgress();
+                console.log('任务提交成功，包含文件:', !!file);
 
                 // 更新界面
                 this.updateUI();
