@@ -48,122 +48,80 @@ class Auth {
             this.loginForm = document.getElementById('loginForm');
             if (this.loginForm) {
                 this.init();
+            } else {
+                this.logError('未找到登录表单');
             }
         }
     }
 
-    // 添加错误日志方法
     logError(message, data = null) {
         const logEntry = {
             timestamp: new Date().toISOString(),
-            message,
-            data
+            message: message,
+            data: data
         };
         this.errorLogs.push(logEntry);
-        console.log(`[${logEntry.timestamp}] ${message}`, data);
-        
-        // 保存到 localStorage
-        localStorage.setItem('authErrorLogs', JSON.stringify(this.errorLogs));
+        console.log(`[Auth] ${message}`, data || '');
     }
 
     init() {
-        this.logError('开始初始化登录表单');
-        if (this.loginForm) {
-            this.logError('找到登录表单，绑定提交事件');
-            this.loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                this.logError('表单提交事件触发');
-                await this.handleLogin();
-            });
-            this.logError('登录表单事件绑定完成');
-        } else {
-            this.logError('未找到登录表单元素，当前页面元素:', {
-                body: document.body.innerHTML,
-                loginForm: document.getElementById('loginForm')
-            });
+        this.logError('初始化登录表单');
+        
+        // 从 URL 参数获取团队信息
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamName = urlParams.get('team');
+        const leaderName = urlParams.get('leader');
+
+        // 如果存在团队信息，自动填充表单
+        if (teamName) {
+            const teamNameInput = document.getElementById('teamName');
+            if (teamNameInput) {
+                teamNameInput.value = decodeURIComponent(teamName);
+            }
         }
+        if (leaderName) {
+            const leaderNameInput = document.getElementById('leaderName');
+            if (leaderNameInput) {
+                leaderNameInput.value = decodeURIComponent(leaderName);
+            }
+        }
+
+        // 绑定表单提交事件
+        this.loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleLogin();
+        });
     }
 
     async handleLogin() {
-        this.logError('开始处理登录请求');
         try {
-            const teamName = document.getElementById('teamName');
-            const leaderName = document.getElementById('leaderName');
-            
-            this.logError('表单元素状态:', {
-                teamNameExists: !!teamName,
-                leaderNameExists: !!leaderName,
-                teamNameValue: teamName?.value,
-                leaderNameValue: leaderName?.value
-            });
+            const teamName = document.getElementById('teamName').value.trim();
+            const leaderName = document.getElementById('leaderName').value.trim();
 
             if (!teamName || !leaderName) {
-                this.logError('找不到表单输入元素');
-                alert('系统错误，请刷新页面重试');
+                alert('Please enter both team name and leader name');
                 return;
             }
 
-            const teamNameValue = teamName.value.trim();
-            const leaderNameValue = leaderName.value.trim();
+            this.logError('尝试登录:', { teamName, leaderName });
 
-            this.logError('处理的表单数据:', {
-                teamNameValue,
-                leaderNameValue
-            });
-
-            if (!teamNameValue || !leaderNameValue) {
-                this.logError('表单验证失败：字段为空');
-                alert('请填写所有字段');
-                return;
-            }
-
-            this.logError('开始调用 API 登录');
-            const user = await window.API.login(teamNameValue, leaderNameValue);
-            this.logError('API 登录响应:', user);
-            
-            if (user && user.team_name) {
-                this.logError('登录成功，准备保存用户信息');
-                
-                const userData = {
-                    team_name: user.team_name,
-                    leader_name: user.leader_name,
-                    id: user.id,
-                    created_at: user.created_at
-                };
-                
-                localStorage.setItem('currentUser', JSON.stringify(userData));
-                
-                // 构建游戏页面URL
-                const gamePath = `${this.baseUrl}/pages/game.html`;
-                
-                this.logError('准备跳转:', {
-                    gamePath,
-                    baseUrl: this.baseUrl,
-                    currentPath: window.location.pathname
-                });
-                
-                window.location.href = gamePath;
+            const success = await window.API.login(teamName, leaderName);
+            if (success) {
+                this.logError('登录成功，保存用户信息');
+                localStorage.setItem('currentUser', JSON.stringify({ team_name: teamName, leader_name: leaderName }));
+                window.location.href = `${this.baseUrl}/pages/game.html`;
             } else {
-                this.logError('登录失败：无效的用户数据', user);
-                alert('登录失败，请重试');
+                this.logError('登录失败');
+                alert('Login failed. Please try again.');
             }
         } catch (error) {
             this.logError('登录过程出错:', error);
-            alert('登录失败，请重试');
+            alert('An error occurred during login. Please try again.');
         }
     }
 }
 
-// 清除之前的错误日志
-localStorage.removeItem('authErrorLogs');
-
-// 初始化认证
+// 初始化 Auth 实例
 window.addEventListener('DOMContentLoaded', () => {
-    // 禁用所有 i18next 相关的控制台输出
-    if (window.i18next) {
-        window.i18next.options.debug = false;
-    }
-    
-    console.log('DOM加载完成，初始化Auth');
     window.auth = new Auth();
 }); 
