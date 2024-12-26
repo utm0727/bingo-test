@@ -699,28 +699,32 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 直接上传原始文件
+                    // 设置正确的Content-Type
+                    const options = {
+                        contentType: file.type
+                    };
+
+                    // 上传文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .upload(fileName, file);
+                        .upload(fileName, file, options);
 
                     if (uploadError) {
                         console.error('上传错误:', uploadError);
                         throw uploadError;
                     }
 
-                    // 获取文件的公共URL
+                    // 获取文件的公共URL，并添加下载参数
                     const { data: { publicUrl } } = supabaseClient
                         .storage
                         .from('submissions')
-                        .getPublicUrl(fileName);
-
-                    console.log('文件上传成功:', {
-                        fileName,
-                        publicUrl,
-                        contentType: file.type
-                    });
+                        .getPublicUrl(fileName, {
+                            download: true,
+                            transform: {
+                                disposition: 'attachment'
+                            }
+                        });
 
                     return {
                         fileUrl: publicUrl,
