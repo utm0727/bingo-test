@@ -1,176 +1,75 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>排行榜 - Bingo 游戏</title>
+    <title>Leaderboard - Bingo Game</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen py-6 px-4">
-        <div class="max-w-4xl mx-auto">
-            <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">排行榜</h1>
-                <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
-                    返回首页
-                </a>
-            </div>
-
-            <div class="mb-6">
-                <div id="completionMessage" class="text-green-600 text-lg font-semibold hidden">
-                    您的队伍已经完成游戏了！
+    <div class="min-h-screen py-6 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-6 flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Leaderboard</h1>
+                <div class="flex gap-4">
+                    <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
+                        Back to Home
+                    </a>
+                    <a href="game.html" class="text-indigo-600 hover:text-indigo-500">
+                        Back to Game
+                    </a>
                 </div>
             </div>
 
-            <div class="bg-white shadow rounded-lg overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                排名
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                团队
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                完成时间
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboardBody" class="bg-white divide-y divide-gray-200">
-                        <!-- 排行榜数据将在这里动态插入 -->
-                    </tbody>
-                </table>
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h2 class="text-lg leading-6 font-medium text-gray-900">Team Rankings</h2>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Sorted by completion time</p>
+                </div>
+                <div class="border-t border-gray-200">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Rank
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Team Name
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Team Leader
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Completion Time
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Leaderboard data will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 先加载 Supabase -->
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- 添加调试代码 -->
     <script>
-        console.log('检查 Supabase 是否加载:', {
+        console.log('Checking if Supabase is loaded:', {
             supabase: window.supabase,
             hasCreateClient: window.supabase?.createClient
         });
     </script>
-
-    <!-- 然后加载 API -->
     <script src="../js/api.js"></script>
-
-    <!-- 添加调试代码 -->
     <script>
-        console.log('检查 API 是否加载:', {
+        console.log('Checking if API is loaded:', {
             API: window.API,
             hasGetLeaderboard: window.API?.getLeaderboard
         });
     </script>
-
-    <!-- 排行榜脚本 -->
-    <script>
-        async function loadLeaderboard() {
-            try {
-                // 等待 API 准备好
-                if (!window.API) {
-                    console.log('等待 API 初始化...');
-                    setTimeout(loadLeaderboard, 100);
-                    return;
-                }
-
-                console.log('开始加载排行榜...');
-                const leaderboard = await window.API.getLeaderboard();
-                console.log('获取到的排行榜数据:', leaderboard);
-
-                const tbody = document.getElementById('leaderboardBody');
-                if (!tbody) {
-                    console.error('找不到排行榜表格体');
-                    return;
-                }
-
-                tbody.innerHTML = '';
-
-                if (!leaderboard || leaderboard.length === 0) {
-                    console.log('没有排行榜数据');
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">
-                                暂无数据
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                leaderboard.forEach((entry, index) => {
-                    console.log('处理排行榜条目:', entry);
-                    const tr = document.createElement('tr');
-                    const minutes = Math.floor(entry.completion_time / 60000);
-                    const seconds = Math.floor((entry.completion_time % 60000) / 1000);
-                    
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${index + 1}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <a href="../index.html?team=${encodeURIComponent(entry.team_name)}&leader=${encodeURIComponent(entry.leader_name || '')}" 
-                               class="text-indigo-600 hover:text-indigo-900">
-                                ${entry.team_name}
-                            </a>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${minutes}分${seconds}秒
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('加载排行榜失败:', error);
-                const tbody = document.getElementById('leaderboardBody');
-                if (tbody) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="px-6 py-4 text-center text-red-500">
-                                加载失败，请刷新页面重试
-                            </td>
-                        </tr>
-                    `;
-                }
-            }
-        }
-
-        function showCompletionMessage() {
-            const user = JSON.parse(localStorage.getItem('currentUser'));
-            if (user) {
-                window.API.checkGameCompletion(user.team_name)
-                    .then(isCompleted => {
-                        if (isCompleted) {
-                            document.getElementById('completionMessage').classList.remove('hidden');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('检查游戏状态失败:', error);
-                    });
-            }
-        }
-
-        // 等待 DOM 和 API 加载完成
-        window.addEventListener('DOMContentLoaded', () => {
-            if (window.API) {
-                loadLeaderboard();
-                showCompletionMessage();
-            } else {
-                window.addEventListener('APIReady', () => {
-                    loadLeaderboard();
-                    showCompletionMessage();
-                });
-            }
-
-            // 添加自动刷新
-            setInterval(() => {
-                loadLeaderboard();
-            }, 30000); // 每30秒刷新一次
-        });
-    </script>
+    <script src="../js/leaderboard.js"></script>
 </body>
 </html> 
