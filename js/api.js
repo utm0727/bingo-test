@@ -301,7 +301,7 @@ function initAPI() {
                             };
 
                             // 如果有文件数据，上传到 Storage
-                            if (cell.submission.fileData) {
+                            if (cell.submission.file) {  // 改为使用 file 对象
                                 try {
                                     // 生成安全的文件名
                                     const timestamp = Date.now();
@@ -309,36 +309,17 @@ function initAPI() {
                                     const fileExt = originalName.split('.').pop().toLowerCase();
                                     const safeFileName = `${teamName}_${timestamp}.${fileExt}`;
                                     
-                                    // 从 base64 转换为 Blob
-                                    const base64Data = cell.submission.fileData.split(',')[1];
-                                    const byteCharacters = atob(base64Data);
-                                    const byteArrays = [];
-                                    
-                                    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-                                        const slice = byteCharacters.slice(offset, offset + 512);
-                                        const byteNumbers = new Array(slice.length);
-                                        
-                                        for (let i = 0; i < slice.length; i++) {
-                                            byteNumbers[i] = slice.charCodeAt(i);
-                                        }
-                                        
-                                        const byteArray = new Uint8Array(byteNumbers);
-                                        byteArrays.push(byteArray);
-                                    }
-                                    
-                                    const blob = new Blob(byteArrays, { type: cell.submission.fileType });
-                                    
                                     console.log('准备上传文件:', {
                                         fileName: safeFileName,
                                         fileType: cell.submission.fileType,
-                                        fileSize: blob.size
+                                        fileSize: cell.submission.file.size
                                     });
 
-                                    // 上传文件
+                                    // 直接上传文件对象
                                     const { data, error: uploadError } = await supabaseClient
                                         .storage
                                         .from('submissions')
-                                        .upload(safeFileName, blob, {
+                                        .upload(safeFileName, cell.submission.file, {
                                             contentType: cell.submission.fileType,
                                             cacheControl: '3600',
                                             upsert: true
@@ -353,8 +334,8 @@ function initAPI() {
                                         .getPublicUrl(safeFileName);
 
                                     processedSubmission.fileUrl = publicUrl;
-                                    processedSubmission.fileName = originalName; // 保存原始文件名用于显示
-                                    processedSubmission.storagePath = safeFileName; // 保存存储路径
+                                    processedSubmission.fileName = originalName;
+                                    processedSubmission.storagePath = safeFileName;
                                     processedSubmission.fileType = cell.submission.fileType;
                                     
                                     console.log('文件上传成功:', {
@@ -365,7 +346,7 @@ function initAPI() {
                                     });
                                 } catch (error) {
                                     console.error('文件上传失败:', error);
-                                    throw error; // 让错误继续传播，这样用户可以知道上传失败
+                                    throw error;
                                 }
                             }
 
