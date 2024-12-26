@@ -305,9 +305,24 @@ class BingoGame {
     }
 
     async handleTaskSubmit() {
-        if (this.currentTaskIndex === null) return;
-
         try {
+            // 检查当前任务索引是否有效
+            if (this.currentTaskIndex === null || this.currentTaskIndex === undefined) {
+                console.error('无效的任务索引:', this.currentTaskIndex);
+                alert('提交失败：无效的任务索引');
+                return;
+            }
+
+            // 检查当前格子是否存在
+            if (!this.board || !this.board[this.currentTaskIndex]) {
+                console.error('找不到对应的格子:', {
+                    currentTaskIndex: this.currentTaskIndex,
+                    boardLength: this.board?.length
+                });
+                alert('提交失败：找不到对应的格子');
+                return;
+            }
+
             const description = document.getElementById('taskDescription').value.trim();
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
@@ -381,9 +396,17 @@ class BingoGame {
                 }
             }
 
+            console.log('准备更新格子状态:', {
+                index: this.currentTaskIndex,
+                currentCell: this.board[this.currentTaskIndex]
+            });
+
             // 更新格子状态
-            this.board[this.currentTaskIndex].completed = true;
-            this.board[this.currentTaskIndex].submission = submission;
+            this.board[this.currentTaskIndex] = {
+                ...this.board[this.currentTaskIndex],
+                completed: true,
+                submission: submission
+            };
 
             try {
                 // 保存进度
@@ -405,8 +428,11 @@ class BingoGame {
             } catch (error) {
                 console.error('保存进度失败:', error);
                 // 回滚状态
-                this.board[this.currentTaskIndex].completed = false;
-                delete this.board[this.currentTaskIndex].submission;
+                this.board[this.currentTaskIndex] = {
+                    ...this.board[this.currentTaskIndex],
+                    completed: false,
+                    submission: undefined
+                };
                 throw error;
             }
         } catch (error) {
