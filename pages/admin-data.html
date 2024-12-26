@@ -106,8 +106,13 @@
         async function updateLeaderboard() {
             try {
                 console.log('开始加载排行榜...');
-                const leaderboard = await window.API.getLeaderboard();
+                const { data: leaderboard, error } = await window.API.getTeamLeaderboard();
                 console.log('获取到的排行榜数据:', leaderboard);
+
+                if (error) {
+                    console.error('获取排行榜数据失败:', error);
+                    return;
+                }
 
                 const tbody = document.getElementById('leaderboardBody');
                 if (!tbody) {
@@ -128,8 +133,22 @@
                     return;
                 }
 
-                leaderboard.forEach((entry, index) => {
+                // 按完成时间排序
+                const sortedLeaderboard = leaderboard.sort((a, b) => {
+                    const timeA = new Date(a.completion_time).getTime();
+                    const timeB = new Date(b.completion_time).getTime();
+                    return timeA - timeB;
+                });
+
+                sortedLeaderboard.forEach((entry, index) => {
+                    if (!entry || !entry.completion_time) return;
+
                     const completionTime = new Date(entry.completion_time);
+                    if (isNaN(completionTime.getTime())) {
+                        console.error('无效的完成时间:', entry.completion_time);
+                        return;
+                    }
+
                     const formattedTime = completionTime.toLocaleString('zh-CN', {
                         year: 'numeric',
                         month: '2-digit',
@@ -145,7 +164,7 @@
                             ${index + 1}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${entry.team_name}
+                            ${entry.team_name || '未知团队'}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             ${formattedTime}
@@ -160,6 +179,16 @@
                 });
             } catch (error) {
                 console.error('更新排行榜失败:', error);
+                const tbody = document.getElementById('leaderboardBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-red-500">
+                                加载排行榜失败，请刷新重试
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
 
