@@ -132,35 +132,37 @@ class BingoGame {
         // 创建格子
         this.board.forEach((cell, index) => {
             const cellElement = document.createElement('div');
-            cellElement.className = `bingo-cell relative aspect-square ${
-                cell.completed ? 'completed' : ''
-            }`;
-
-            // 添加点击事件（无论是否完成都可以点击）
-            cellElement.onclick = () => this.handleCellClick(index);
+            cellElement.className = 'relative aspect-square';
 
             // 创建格子内容
+            const cellContent = document.createElement('div');
+            cellContent.className = `absolute inset-0 flex flex-col items-center justify-center p-4 bg-white border-2 ${
+                cell.completed ? 'border-green-500' : 'border-gray-300'
+            } rounded-lg shadow transition-colors`;
+
             if (cell.flipped || cell.completed) {
-                cellElement.innerHTML = `
-                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 bg-white border-2 ${
-                        cell.completed ? 'border-green-500' : 'border-gray-300'
-                    } rounded-lg shadow">
-                        <p class="text-center break-words">${cell.question}</p>
-                        ${
-                            cell.completed
-                                ? '<span class="mt-2 text-green-500">已完成</span>'
-                                : ''
-                        }
-                    </div>
+                // 显示题目内容
+                cellContent.innerHTML = `
+                    <p class="text-center break-words">${cell.question}</p>
+                    ${cell.completed ? '<span class="mt-2 text-green-500">已完成</span>' : ''}
                 `;
+
+                // 如果已完成但游戏未结束，添加可点击样式
+                if (cell.completed && !this.isBingo) {
+                    cellContent.classList.add('cursor-pointer', 'hover:bg-gray-50');
+                }
             } else {
-                cellElement.innerHTML = `
-                    <div class="absolute inset-0 flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg shadow cursor-pointer hover:bg-gray-50">
-                        <span class="text-xl font-bold">?</span>
-                    </div>
+                // 未翻开的格子
+                cellContent.classList.add('cursor-pointer', 'hover:bg-gray-50');
+                cellContent.innerHTML = `
+                    <span class="text-xl font-bold">?</span>
                 `;
             }
 
+            // 添加点击事件
+            cellContent.onclick = () => this.handleCellClick(index);
+
+            cellElement.appendChild(cellContent);
             board.appendChild(cellElement);
         });
 
