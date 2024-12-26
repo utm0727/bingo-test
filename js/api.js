@@ -29,10 +29,13 @@ function initAPI() {
                 },
                 global: {
                     headers: {
-                        'Accept': 'application/json',
+                        'Accept': '*/*',
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
                     }
+                },
+                storage: {
+                    multipart: true
                 }
             }
         );
@@ -693,16 +696,30 @@ function initAPI() {
                     console.log('开始上传文件:', {
                         fileName,
                         fileType: file.type,
-                        fileSize: file.size
+                        fileSize: file.size,
+                        file: file
                     });
 
-                    // 直接上传原始文件
+                    // 确保文件类型正确
+                    if (!file.type) {
+                        console.error('文件类型未定义');
+                        throw new Error('文件类型未定义');
+                    }
+
+                    // 创建新的 Blob 对象，确保正确的 MIME 类型
+                    const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+
+                    // 上传文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .upload(fileName, file, {
+                        .upload(fileName, blob, {
                             contentType: file.type,
-                            upsert: true
+                            upsert: true,
+                            duplex: 'half',
+                            headers: {
+                                'Content-Type': file.type
+                            }
                         });
 
                     if (uploadError) {
@@ -719,7 +736,9 @@ function initAPI() {
                     console.log('文件上传成功:', {
                         fileName,
                         publicUrl,
-                        contentType: file.type
+                        contentType: file.type,
+                        originalType: file.type,
+                        blobType: blob.type
                     });
 
                     return {
