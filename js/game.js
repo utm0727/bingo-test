@@ -263,7 +263,7 @@ class BingoGame {
         const modal = document.getElementById('taskModal');
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
-        const description = document.getElementById('taskDescription');
+        const message = document.getElementById('taskMessage');
         const filePreview = document.getElementById('filePreview');
         const fileName = document.getElementById('fileName');
         
@@ -281,7 +281,7 @@ class BingoGame {
         // 如果编辑模式，填充已有内容
         if (isEdit && this.board[index].submission) {
             const submission = this.board[index].submission;
-            description.value = submission.description || '';
+            message.value = submission.description || '';
             
             // 清除文件输入
             const fileInput = document.getElementById('taskFile');
@@ -356,7 +356,7 @@ class BingoGame {
                 return;
             }
 
-            const description = document.getElementById('taskDescription').value.trim();
+            const description = document.getElementById('taskMessage').value.trim();
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
