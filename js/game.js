@@ -395,7 +395,7 @@ class BingoGame {
                     const originalExt = file.name.split('.').pop().toLowerCase();
                     // 从MIME类型获取文件类型
                     const mimeExt = file.type.split('/')[1];
-                    // 使用MIME类型���扩展名，如果没有则使用原始扩展名
+                    // 使���MIME类型扩展名，如果没有则使用原始扩展名
                     const fileExt = mimeExt || originalExt;
                     
                     // 生成安全的文件名
@@ -414,71 +414,43 @@ class BingoGame {
                     }
 
                     // 直接上传原始文件
-                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
-                    
-                    // 更新提交对象
-                    submission.fileUrl = fileUrl;
+                    const uploadResult = await window.API.uploadFile(safeFileName, file);
                     submission.fileName = file.name;
-                    submission.storagePath = storagePath;
                     submission.fileType = file.type;
-                    submission.originalName = file.name;  // 保存原始文件名
-
-                    console.log('文件已上传:', {
-                        fileUrl,
-                        fileName: file.name,
-                        storagePath,
-                        fileType: file.type,
-                        originalExt
-                    });
+                    submission.fileUrl = uploadResult.url;
+                    submission.storagePath = uploadResult.path;
                 } catch (error) {
-                    console.error('文件处理失败:', error);
-                    alert(error.message);
+                    console.error('文件上传失败:', error);
+                    alert('文件上传失败，请重试');
                     return;
                 }
             }
 
-            console.log('准备更新格子状态:', {
-                index: this.currentTaskIndex,
-                currentCell: this.board[this.currentTaskIndex]
-            });
+            // 更新当前格子的状态
+            this.board[this.currentTaskIndex].submission = submission;
+            this.board[this.currentTaskIndex].completed = true;
 
-            // 更新格子状态
-            this.board[this.currentTaskIndex] = {
-                ...this.board[this.currentTaskIndex],
-                completed: true,
-                submission: submission
-            };
+            // 保存进度
+            await this.saveProgress();
 
-            try {
-                // 保存进度
-                await this.saveProgress();
-                console.log('任务提交成功，包含文件:', !!file);
+            // 关闭任务模态框
+            this.closeTaskModal();
 
-                // 关闭对话框
-                this.closeTaskModal();
-
-                // 更新界面
-                this.updateUI();
-
-                // 检查是否完成 Bingo
-                if (this.checkBingo()) {
-                    this.isBingo = true;
-                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
-                    await this.handleGameComplete(totalTime);
-                }
-            } catch (error) {
-                console.error('保存进度失败:', error);
-                // 回滚状态
-                this.board[this.currentTaskIndex] = {
-                    ...this.board[this.currentTaskIndex],
-                    completed: false,
-                    submission: undefined
-                };
-                throw error;
+            // 检查是否完成 Bingo
+            if (this.checkBingo()) {
+                // 计算总用时
+                const totalTime = Date.now() - this.startTime;
+                this.isBingo = true;
+                
+                // 处理游戏完成
+                await this.handleGameComplete(totalTime);
             }
+
+            // 重新渲染游戏板
+            this.renderBoard();
         } catch (error) {
             console.error('提交任务失败:', error);
-            alert('提交失败：' + (error.message || '请重试'));
+            alert('提交失败，请重试');
         }
     }
 
