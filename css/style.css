@@ -8,18 +8,15 @@
     transform-style: preserve-3d;
     position: relative;
     width: 100%;
-    height: 100%;
-    min-height: 150px;
+    padding-bottom: 100%;
 }
 
 .bingo-cell.flipped .cell-front {
     transform: rotateY(180deg);
-    z-index: 1;
 }
 
 .bingo-cell.flipped .cell-back {
     transform: rotateY(0);
-    z-index: 2;
 }
 
 .cell-front,
@@ -36,22 +33,21 @@
     flex-direction: column;
     padding: 1rem;
     background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .cell-front {
     transform: rotateY(0);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    border: 2px solid #e5e7eb;
-    z-index: 2;
+    gap: 0.5rem;
 }
 
 .cell-back {
-    transform: rotateY(-180deg);
-    border: 2px solid #e5e7eb;
+    transform: rotateY(180deg);
     overflow-y: auto;
-    z-index: 1;
 }
 
 .bingo-cell.completed {
@@ -109,4 +105,16 @@
     max-width: 100%;
     max-height: 100px;
     object-fit: contain;
+}
+
+.number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4F46E5;
+}
+
+.question {
+    font-size: 1rem;
+    color: #374151;
+    text-align: center;
 } 

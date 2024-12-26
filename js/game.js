@@ -145,8 +145,8 @@ class BingoGame {
             const front = document.createElement('div');
             front.className = 'cell-front';
             front.innerHTML = `
-                <div class="text-2xl font-bold">${index + 1}</div>
-                <div class="text-lg">${cell.question}</div>
+                <div class="number">${index + 1}</div>
+                <div class="question">${cell.question}</div>
             `;
             
             // 创建背面
@@ -154,30 +154,41 @@ class BingoGame {
             back.className = 'cell-back';
             
             // 添加题目内容
-            const question = document.createElement('div');
-            question.className = 'question-content mb-4';
-            question.textContent = cell.question;
-            back.appendChild(question);
+            const questionContent = document.createElement('div');
+            questionContent.className = 'question-content';
+            questionContent.innerHTML = `
+                <div class="text-lg font-medium mb-2">Question ${index + 1}</div>
+                <div class="text-gray-700">${cell.question}</div>
+            `;
+            back.appendChild(questionContent);
 
             // 如果已完成，添加提交内容预览
             if (cell.completed && cell.submission) {
                 const submission = cell.submission;
                 const preview = document.createElement('div');
-                preview.className = 'mt-2 text-sm text-gray-600';
+                preview.className = 'mt-4 space-y-2';
                 
                 // 添加文字说明预览
                 if (submission.description) {
-                    const description = document.createElement('p');
-                    description.className = 'mb-1';
+                    const description = document.createElement('div');
+                    description.className = 'text-sm text-gray-600';
                     description.textContent = submission.description;
                     preview.appendChild(description);
                 }
 
                 // 添加文件预览
-                if (submission.fileUrl || submission.fileName) {
-                    const fileInfo = document.createElement('p');
-                    fileInfo.className = 'text-indigo-600 cursor-pointer hover:text-indigo-500';
-                    fileInfo.textContent = submission.fileName || 'View Submission';
+                if (submission.fileUrl) {
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'text-sm text-indigo-600 cursor-pointer hover:text-indigo-500';
+                    fileInfo.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span>View Submission</span>
+                        </div>
+                    `;
                     fileInfo.onclick = (e) => {
                         e.stopPropagation();
                         this.viewSubmission(index);
@@ -186,6 +197,18 @@ class BingoGame {
                 }
 
                 back.appendChild(preview);
+
+                // 如果游戏未完成，添加编辑按钮
+                if (!this.isBingo) {
+                    const editButton = document.createElement('button');
+                    editButton.className = 'mt-4 text-sm text-blue-600 hover:text-blue-700';
+                    editButton.textContent = 'Edit Submission';
+                    editButton.onclick = (e) => {
+                        e.stopPropagation();
+                        this.showTaskModal(index, true);
+                    };
+                    back.appendChild(editButton);
+                }
             }
 
             // 添加正反面到格子
@@ -323,22 +346,17 @@ class BingoGame {
             // 如果有文件，处理文件上传
             if (file) {
                 try {
-                    // 生成唯一的文件名
-                    const fileExt = file.name.split('.').pop();
-                    const uniqueFileName = `${this.currentUser.team_name}_${this.board[this.currentTaskIndex].id}_${Date.now()}.${fileExt}`;
+                    // 将文件转换为 Base64
+                    const base64File = await this.fileToBase64(file);
+                    submission.fileData = base64File;
+                    submission.fileType = file.type;
+                    submission.fileName = file.name;
 
                     console.log('File prepared for upload:', {
-                        originalName: file.name,
-                        uniqueFileName,
+                        fileName: file.name,
                         fileType: file.type,
                         fileSize: file.size
                     });
-
-                    // 上传文件并获取URL
-                    const fileUrl = await window.API.uploadFile(file, uniqueFileName);
-                    submission.fileUrl = fileUrl;
-                    submission.fileName = file.name;
-                    submission.fileType = file.type;
                 } catch (error) {
                     console.error('File processing failed:', error);
                     throw new Error('Failed to process file');
