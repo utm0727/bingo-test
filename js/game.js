@@ -395,7 +395,7 @@ class BingoGame {
                     const originalExt = file.name.split('.').pop().toLowerCase();
                     // 从MIME类型获取文件类型
                     const mimeExt = file.type.split('/')[1];
-                    // 使用MIME类型扩展名，如果没有则使用原始扩展名
+                    // 使用MIME类型���扩展名，如果没有则使用原始扩展名
                     const fileExt = mimeExt || originalExt;
                     
                     // 生成安全的文件名
@@ -443,30 +443,42 @@ class BingoGame {
             });
 
             // 更新格子状态
-            this.board[this.currentTaskIndex].completed = true;
-            this.board[this.currentTaskIndex].submission = submission;
+            this.board[this.currentTaskIndex] = {
+                ...this.board[this.currentTaskIndex],
+                completed: true,
+                submission: submission
+            };
 
-            // 更新 UI
-            const cell = document.querySelector(`[data-index="${this.currentTaskIndex}"]`);
-            if (cell) {
-                cell.classList.add('completed');
-            }
-
-            // 检查是否完成了一条线
-            if (this.checkBingo()) {
-                this.isBingo = true;
-                const totalTime = Date.now() - this.startTime;
-                await this.handleGameComplete(totalTime);
-            } else {
-                // 如果没有完成，保存进度
+            try {
+                // 保存进度
                 await this.saveProgress();
-            }
+                console.log('任务提交成功，包含文件:', !!file);
 
-            // 关闭任务模态框
-            this.closeTaskModal();
+                // 关闭对话框
+                this.closeTaskModal();
+
+                // 更新界面
+                this.updateUI();
+
+                // 检查是否完成 Bingo
+                if (this.checkBingo()) {
+                    this.isBingo = true;
+                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                    await this.handleGameComplete(totalTime);
+                }
+            } catch (error) {
+                console.error('保存进度失败:', error);
+                // 回滚状态
+                this.board[this.currentTaskIndex] = {
+                    ...this.board[this.currentTaskIndex],
+                    completed: false,
+                    submission: undefined
+                };
+                throw error;
+            }
         } catch (error) {
             console.error('提交任务失败:', error);
-            alert('提交失败，请重试');
+            alert('提交失败：' + (error.message || '请重试'));
         }
     }
 
@@ -505,45 +517,46 @@ class BingoGame {
 
     // 添加检查 Bingo 的方法
     checkBingo() {
+        const lines = [];
+        
         // 检查行
         for (let i = 0; i < this.size; i++) {
             const rowStart = i * this.size;
-            const rowComplete = this.checkLine(
-                Array.from({length: this.size}, (_, j) => rowStart + j)
-            );
-            if (rowComplete) return true;
+            const rowCells = Array.from({length: this.size}, (_, j) => rowStart + j);
+            if (this.checkLine(rowCells)) {
+                lines.push(rowCells);
+            }
         }
 
         // 检查列
         for (let i = 0; i < this.size; i++) {
-            const colComplete = this.checkLine(
-                Array.from({length: this.size}, (_, j) => i + j * this.size)
-            );
-            if (colComplete) return true;
+            const colCells = Array.from({length: this.size}, (_, j) => i + j * this.size);
+            if (this.checkLine(colCells)) {
+                lines.push(colCells);
+            }
         }
 
         // 检查主对角线
-        const mainDiagonal = Array.from(
-            {length: this.size}, 
-            (_, i) => i * (this.size + 1)
-        );
-        if (this.checkLine(mainDiagonal)) return true;
+        const mainDiagonal = Array.from({length: this.size}, (_, i) => i * (this.size + 1));
+        if (this.checkLine(mainDiagonal)) {
+            lines.push(mainDiagonal);
+        }
 
         // 检查副对角线
-        const antiDiagonal = Array.from(
-            {length: this.size}, 
-            (_, i) => (i + 1) * (this.size - 1)
-        );
-        if (this.checkLine(antiDiagonal)) return true;
+        const antiDiagonal = Array.from({length: this.size}, (_, i) => (i + 1) * (this.size - 1));
+        if (this.checkLine(antiDiagonal)) {
+            lines.push(antiDiagonal);
+        }
 
-        return false;
+        // 如果有任何一条线完成，就算 Bingo
+        return lines.length > 0;
     }
 
     // 添加检查线的方法
     checkLine(cells) {
         return cells.every(index => {
             const cell = this.board[index];
-            return cell && cell.completed === true;
+            return cell && cell.completed;
         });
     }
 
