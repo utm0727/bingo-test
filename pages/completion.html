@@ -39,50 +39,35 @@
     <script src="../js/api.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // 从 URL 参数获取团队名称
-                const urlParams = new URLSearchParams(window.location.search);
-                const teamName = urlParams.get('team');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('请先登录');
+                window.location.href = '../index.html';
+                return;
+            }
 
-                if (!teamName) {
-                    // 如果URL中没有团队名称，尝试从localStorage获取
-                    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-                    if (!currentUser) {
-                        alert('未找到团队信息');
-                        window.location.href = '../index.html';
-                        return;
-                    }
-                    teamName = currentUser.teamName;
+            // 显示团队信息
+            document.getElementById('teamInfo').textContent = `团队：${currentUser.teamName}`;
+
+            try {
+                // 获取完成记录
+                const leaderboard = await API.getLeaderboard();
+                const teamRecord = leaderboard.find(record => record.teamName === currentUser.teamName);
+                
+                if (teamRecord) {
+                    const minutes = Math.floor(teamRecord.score / 60);
+                    const seconds = teamRecord.score % 60;
+                    document.getElementById('completionTime').textContent = 
+                        `完成时间：${minutes}分${seconds}秒`;
                 }
 
-                // 显示团队信息
-                document.getElementById('teamInfo').textContent = `团队：${teamName}`;
-
-                try {
-                    // 获取完成记录
-                    const { data: leaderboard } = await window.supabaseClient
-                        .from('leaderboard')
-                        .select('*')
-                        .eq('team_name', teamName)
-                        .single();
-                    
-                    if (leaderboard) {
-                        const minutes = Math.floor(leaderboard.completion_time / 60);
-                        const seconds = leaderboard.completion_time % 60;
-                        document.getElementById('completionTime').textContent = 
-                            `完成时间：${minutes}分${seconds}秒`;
-                    }
-
-                    // 获取游戏进度显示最终状态
-                    const progress = await API.getGameProgress(teamName);
-                    if (progress && progress.board) {
-                        renderCompletedBoard(progress.board);
-                    }
-                } catch (error) {
-                    console.error('加载完成数据失败:', error);
+                // 获取游戏进度显示最终状态
+                const progress = await API.getGameProgress(currentUser.teamName);
+                if (progress && progress.board) {
+                    renderCompletedBoard(progress.board);
                 }
             } catch (error) {
-                console.error('初始化页面失败:', error);
+                console.error('Failed to load completion data:', error);
             }
         });
 
