@@ -439,7 +439,7 @@ class AdminPanel {
             // 更新提示信息
             const infoText = document.createElement('p');
             infoText.className = 'mt-2 text-sm text-gray-500';
-            infoText.textContent = `当前有 ${uniqueQuestions} 个不重复题目，可支持最大 ${maxPossibleSize}x${maxPossibleSize} 的格子`;
+            infoText.textContent = `Currently have ${uniqueQuestions} unique tasks, supporting maximum grid size of ${maxPossibleSize}x${maxPossibleSize}`;
             
             const existingInfo = gridSizeSelector.parentElement.querySelector('p:last-child');
             if (existingInfo) {
