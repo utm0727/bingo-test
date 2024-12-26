@@ -245,7 +245,7 @@ async function initAPI() {
                     return mergedData;
                 } catch (error) {
                     console.error('Error fetching leaderboard:', error);
-                    throw error;
+                    return []; // 返回空数组而不是抛出错误
                 }
             },
 
@@ -631,10 +631,10 @@ async function initAPI() {
                         .list();
 
                     if (listFilesError) {
-                        console.error('获取存储桶文件列表失败:', listFilesError);
+                        console.error('获取存储桶文件列��失败:', listFilesError);
                         // 继续执行，因为这可能只是权限问题
                     } else {
-                        console.log('���储桶访问正常，当前文件数:', files?.length || 0);
+                        console.log('存储桶访问正常，当前文件数:', files?.length || 0);
                     }
 
                     return true;
