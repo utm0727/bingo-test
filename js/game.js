@@ -388,8 +388,7 @@ class BingoGame {
                     console.log('处理文件上传:', {
                         fileName: file.name,
                         fileType: file.type,
-                        fileSize: file.size,
-                        file: file
+                        fileSize: file.size
                     });
 
                     // 从原始文件名中获取扩展名
@@ -422,7 +421,7 @@ class BingoGame {
                     submission.fileName = file.name;
                     submission.storagePath = storagePath;
                     submission.fileType = file.type;
-                    submission.mimeType = file.type; // 添加MIME类型信息
+                    submission.originalName = file.name;  // 保存原始文件名
 
                     console.log('文件已上传:', {
                         fileUrl,
