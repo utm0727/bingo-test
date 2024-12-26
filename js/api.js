@@ -274,66 +274,77 @@ function initAPI() {
                 }
             },
 
-            // 添加保存游戏进度方法
-            async saveGameProgress(teamName, progress) {
+            // 修改 saveGameProgress 方法
+            async saveGameProgress(teamName, progressData) {
                 try {
-                    console.log('保存游戏进度:', { teamName, progress });
+                    console.log('保存游戏进度:', { teamName, progress: progressData });
                     
-                    // 如果有新的提交包含文件，先上传文件
-                    for (const cell of progress.board) {
-                        if (cell.submission?.file) {
-                            try {
-                                const fileResult = await this.uploadTaskFile(
-                                    teamName,
-                                    cell.id,
-                                    cell.submission.file
-                                );
-                                
-                                // 保存完整的文件信息
-                                cell.submission = {
-                                    ...cell.submission,
-                                    filePath: fileResult.path,
-                                    fileUrl: fileResult.url,
-                                    fileType: fileResult.fileType,
-                                    fileName: fileResult.fileName,
-                                    uploadTime: fileResult.uploadTime
-                                };
-                                
-                                // 删除原始文件对象
-                                delete cell.submission.file;
-                            } catch (error) {
-                                console.error('文件上传失败:', error);
-                                // 继续保存其他数据
+                    // 处理每个格子的提交内容
+                    const processedBoard = await Promise.all(progressData.board.map(async (cell) => {
+                        if (cell.submission) {
+                            const processedSubmission = {
+                                timestamp: cell.submission.timestamp,
+                                description: cell.submission.description || null
+                            };
+
+                            // 如果有文件数据，上传到 Storage
+                            if (cell.submission.fileData) {
+                                try {
+                                    const fileName = `${teamName}/${Date.now()}-${cell.submission.fileName}`;
+                                    
+                                    // 从 base64 转换为 Blob
+                                    const base64Data = cell.submission.fileData.split(',')[1];
+                                    const blob = await fetch(`data:${cell.submission.fileType};base64,${base64Data}`).then(r => r.blob());
+                                    
+                                    // 上传文件
+                                    const { data, error: uploadError } = await supabaseClient
+                                        .storage
+                                        .from('submissions')
+                                        .upload(fileName, blob, {
+                                            contentType: cell.submission.fileType,
+                                            upsert: true
+                                        });
+
+                                    if (uploadError) throw uploadError;
+
+                                    // 获取文件的公共URL
+                                    const { data: { publicUrl } } = supabaseClient
+                                        .storage
+                                        .from('submissions')
+                                        .getPublicUrl(fileName);
+
+                                    processedSubmission.fileUrl = publicUrl;
+                                    processedSubmission.fileName = cell.submission.fileName;
+                                    processedSubmission.fileType = cell.submission.fileType;
+                                } catch (error) {
+                                    console.error('文件上传失败:', error);
+                                }
                             }
+
+                            return {
+                                ...cell,
+                                submission: processedSubmission
+                            };
                         }
-                    }
+                        return cell;
+                    }));
 
-                    // 更新或插入游戏进度
-                    const { data: existingProgress } = await supabaseClient
+                    // 更新进度数据
+                    const { error } = await supabaseClient
                         .from('game_progress')
-                        .select('*')
-                        .eq('team_name', teamName)
-                        .single();
+                        .upsert({
+                            team_name: teamName,
+                            progress: {
+                                ...progressData,
+                                board: processedBoard
+                            }
+                        }, {
+                            onConflict: 'team_name'
+                        });
 
-                    if (existingProgress) {
-                        const { error: updateError } = await supabaseClient
-                            .from('game_progress')
-                            .update({ progress })
-                            .eq('team_name', teamName);
-
-                        if (updateError) throw updateError;
-                    } else {
-                        const { error: insertError } = await supabaseClient
-                            .from('game_progress')
-                            .insert([{
-                                team_name: teamName,
-                                progress: progress
-                            }]);
-
-                        if (insertError) throw insertError;
-                    }
-
+                    if (error) throw error;
                     console.log('游戏进度保存成功');
+                    return true;
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);
                     throw error;
@@ -428,7 +439,7 @@ function initAPI() {
                     }
 
                     const loginSuccess = data && data.password === password;
-                    console.log('���码验证结果:', {
+                    console.log('密码验证结果:', {
                         hasData: !!data,
                         passwordMatch: loginSuccess,
                         dbPassword: data?.password,

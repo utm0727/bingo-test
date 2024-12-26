@@ -283,13 +283,13 @@ class BingoGame {
         if (this.currentTaskIndex === null) return;
 
         try {
-            const description = document.getElementById('taskDescription').value;
+            const description = document.getElementById('taskDescription').value.trim();
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
             // 检查是否至少有一项内容（文字说明或文件）
-            if (!description.trim() && !file) {
-                alert('请填写任务完成说明或上传文件');
+            if (!description && !file) {
+                alert('请至少填写任务完成说明或上传文件');
                 return;
             }
 
@@ -299,11 +299,11 @@ class BingoGame {
             };
 
             // 如果有文字说明，添加到提交中
-            if (description.trim()) {
-                submission.description = description.trim();
+            if (description) {
+                submission.description = description;
             }
 
-            // 如果有文件，添加到提交中
+            // 如果有文件，处理文件上传
             if (file) {
                 try {
                     // 添加文件大小检查
@@ -316,8 +316,11 @@ class BingoGame {
                         throw new Error('只支持图片或视频文件');
                     }
 
-                    submission.file = file;
+                    // 将文件转换为 Base64
+                    const base64File = await this.fileToBase64(file);
+                    submission.fileData = base64File;
                     submission.fileType = file.type;
+                    submission.fileName = file.name;
                 } catch (error) {
                     console.error('文件处理失败:', error);
                     alert(error.message);
@@ -330,8 +333,9 @@ class BingoGame {
             this.board[this.currentTaskIndex].submission = submission;
 
             try {
-                // 保存进度（包括文件上传）
+                // 保存进度
                 await this.saveProgress();
+                console.log('任务提交成功，包含文件:', !!file);
 
                 // 关闭对话框
                 this.closeTaskModal();
@@ -473,6 +477,20 @@ class BingoGame {
             console.error('查看文件失败:', error);
             alert('获取文件失败，请重试');
         }
+    }
+
+    async fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result;
+                resolve(base64String);
+            };
+            reader.onerror = (event) => {
+                reject(event);
+            };
+            reader.readAsDataURL(file);
+        });
     }
 }
 
