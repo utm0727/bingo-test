@@ -178,7 +178,7 @@ async function initAPI() {
                     console.log('开始重置所有数据...');
                     
                     // 删除所有游戏相关数据，但保留管理员账户
-                    const tables = ['scores', 'game_progress', 'questions'];
+                    const tables = ['scores', 'game_progress', 'questions', 'leaderboard', 'users'];
                     
                     for (const table of tables) {
                         console.log(`正在清空 ${table} 表...`);
@@ -205,6 +205,32 @@ async function initAPI() {
                     if (settingsError) {
                         console.error('重置游戏设置失败:', settingsError);
                         throw settingsError;
+                    }
+
+                    // 清理存储桶中的所有文件
+                    try {
+                        const { data: files, error: listError } = await supabaseClient
+                            .storage
+                            .from('submissions')
+                            .list();
+
+                        if (!listError && files && files.length > 0) {
+                            console.log('正在清理存储桶中的文件...');
+                            const filePaths = files.map(file => file.name);
+                            const { error: deleteError } = await supabaseClient
+                                .storage
+                                .from('submissions')
+                                .remove(filePaths);
+
+                            if (deleteError) {
+                                console.error('清理存储桶文件失败:', deleteError);
+                            } else {
+                                console.log('存储桶文件已清理');
+                            }
+                        }
+                    } catch (storageError) {
+                        console.error('清理存储桶失败:', storageError);
+                        // 继续执行，不中断重置过程
                     }
 
                     console.log('所有数据已重置');
@@ -530,7 +556,7 @@ async function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 上传文件
+                    // 上传文���
                     const { data, error } = await supabaseClient.storage
                         .from('submissions')
                         .upload(fileName, file, {
