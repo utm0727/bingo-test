@@ -696,11 +696,14 @@ function initAPI() {
                         fileSize: file.size
                     });
 
+                    // 创建文件的副本以确保正确的类型
+                    const fileBlob = new Blob([file], { type: file.type });
+
                     // 上传文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .upload(fileName, file, {
+                        .upload(fileName, fileBlob, {
                             contentType: file.type,
                             cacheControl: '3600',
                             upsert: true

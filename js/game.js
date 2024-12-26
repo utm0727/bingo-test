@@ -407,10 +407,13 @@ class BingoGame {
                         }
                     }
 
-                    // 上传新文件，确保传递正确的文件类型
-                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
+                    // 创建文件的副本以确保正确的类型
+                    const fileBlob = new Blob([await file.arrayBuffer()], { type: file.type });
+
+                    // 上传新文件
+                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, fileBlob);
                     
-                    // 更新提交对象，确保保存原始文件类型
+                    // 更新提交对象
                     submission.fileUrl = fileUrl;
                     submission.fileName = file.name;
                     submission.storagePath = storagePath;
