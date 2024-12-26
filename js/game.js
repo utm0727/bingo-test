@@ -184,8 +184,8 @@ class BingoGame {
             cellElement.appendChild(front);
             cellElement.appendChild(back);
 
-            // 修改点击事件绑定
-            if (!this.isBingo) {  // 只要游戏未完成就添加点击事件
+            // 只在未完成时添加点击事件
+            if (!cell.completed || !this.isBingo) {
                 cellElement.onclick = () => this.handleCellClick(index);
             }
 
@@ -204,17 +204,15 @@ class BingoGame {
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
         
-        if (!this.board[index]) return;
-
         // 如果游戏已完成，不允许任何修改
         if (this.isBingo) {
-            console.log('游戏已完成，无法修改');
             return;
         }
 
+        if (!this.board[index]) return;
+
         // 如果已完成但游戏未结束，允许修改
         if (this.board[index].completed) {
-            console.log('允许修改已完成的任务');
             this.showTaskModal(index, true); // 传入 true 表示是修改模式
             return;
         }
@@ -235,13 +233,11 @@ class BingoGame {
     showTaskModal(index, isEdit = false) {
         console.log('显示任务提交对话框', { index, isEdit });
         const modal = document.getElementById('taskModal');
-        const modalTitle = document.querySelector('#taskModal h2');  // 获取标题元素
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
         const description = document.getElementById('taskDescription');
         const filePreview = document.getElementById('filePreview');
         const fileName = document.getElementById('fileName');
-        const submitButton = document.querySelector('#taskForm button[type="submit"]');  // 获取提交按钮
         
         if (!modal || !question || !form) {
             console.error('找不到必要的DOM元素');
@@ -254,32 +250,19 @@ class BingoGame {
         // 显示题目
         question.textContent = this.board[index].question;
 
-        // 更新标题和按钮文本
-        if (isEdit) {
-            modalTitle.textContent = '修改任务';
-            submitButton.textContent = '保存修改';
-        } else {
-            modalTitle.textContent = '提交任务';
-            submitButton.textContent = '提交任务';
-        }
-
         // 如果是编辑模式，填充已有内容
         if (isEdit && this.board[index].submission) {
-            console.log('正在加载已有提交内容:', this.board[index].submission);
             const submission = this.board[index].submission;
-            
-            // 填充文字说明
             description.value = submission.description || '';
             
             // 清除文件输入
             const fileInput = document.getElementById('taskFile');
             fileInput.value = '';
             
-            // 如果有已提交的文件，显示文件信息
-            if (submission.fileUrl) {
+            // 如果有已提交的文件，显示文件名
+            if (submission.filePath) {
                 filePreview.classList.remove('hidden');
                 fileName.textContent = submission.fileName || '已上传文件';
-                console.log('显示已上传文件:', submission.fileName);
             } else {
                 filePreview.classList.add('hidden');
             }
@@ -295,13 +278,7 @@ class BingoGame {
         // 绑定提交事件
         form.onsubmit = async (e) => {
             e.preventDefault();
-            try {
-                await this.handleTaskSubmit();
-                console.log('任务提交/修改成功');
-            } catch (error) {
-                console.error('任务提交/修改失败:', error);
-                alert('提交失败：' + (error.message || '请重试'));
-            }
+            await this.handleTaskSubmit();
         };
     }
 

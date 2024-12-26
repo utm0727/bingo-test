@@ -8,8 +8,8 @@
     transform-style: preserve-3d;
     position: relative;
     width: 100%;
-    height: 100%;
-    min-height: 150px;
+    aspect-ratio: 1;
+    min-height: auto;
 }
 
 .bingo-cell.flipped .cell-front {
@@ -52,6 +52,7 @@
     border: 2px solid #e5e7eb;
     overflow-y: auto;
     z-index: 1;
+    max-height: 100%;
 }
 
 .bingo-cell.completed {
@@ -70,6 +71,9 @@
 
 .question-content {
     backface-visibility: hidden;
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
 }
 
 .transform {
