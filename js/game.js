@@ -167,23 +167,29 @@ class BingoGame {
                 cellDiv.innerHTML = content;
             } else if (cell.flipped) {
                 // 已翻开但未完成的格子
-                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
+                cellDiv.classList.add('bg-white', 'hover:bg-gray-50', 'border', 'border-gray-200');
                 cellDiv.innerHTML = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
+                    <button onclick="window.game.showTaskModal(${index})" 
+                            class="mt-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
+                        提交答案
+                    </button>
                 `;
             } else {
                 // 未翻开的格子
-                cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600', 'transform', 'hover:scale-105', 'transition-transform');
                 cellDiv.innerHTML = `
-                    <div class="text-xl font-bold">题目 ${index + 1}</div>
-                    <div class="text-sm mt-2">点击翻开</div>
+                    <div class="text-2xl font-bold mb-2">${index + 1}</div>
+                    <div class="text-sm">点击翻开</div>
                 `;
             }
 
             // 添加点击事件
             if (!cell.completed && !this.isBingo) {
-                cellDiv.onclick = () => this.handleCellClick(index);
+                if (!cell.flipped) {
+                    cellDiv.onclick = () => this.handleCellClick(index);
+                }
             }
 
             gameBoard.appendChild(cellDiv);
