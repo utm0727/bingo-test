@@ -176,6 +176,47 @@ class BingoGame {
             };
 
             gameBoard.appendChild(cellDiv);
+
+            // 如果已完成，添加提交内容预览
+            if (cell.completed && cell.submission) {
+                const submission = cell.submission;
+                const preview = document.createElement('div');
+                preview.className = 'mt-2 text-sm text-gray-600';
+                
+                // 添加文字说明预览
+                if (submission.description) {
+                    const description = document.createElement('p');
+                    description.className = 'mb-1';
+                    description.textContent = submission.description;
+                    preview.appendChild(description);
+                }
+
+                // 添加文件预览
+                if (submission.fileUrl) {
+                    const fileInfo = document.createElement('p');
+                    fileInfo.className = 'text-indigo-600 cursor-pointer hover:text-indigo-500';
+                    fileInfo.textContent = 'View Submission';
+                    fileInfo.onclick = (e) => {
+                        e.stopPropagation();
+                        this.viewSubmission(index);
+                    };
+                    preview.appendChild(fileInfo);
+                }
+
+                // 如果游戏未完成，添加修改按钮
+                if (!this.isBingo) {
+                    const editButton = document.createElement('button');
+                    editButton.className = 'mt-2 text-sm text-blue-600 hover:text-blue-700';
+                    editButton.textContent = 'Edit Submission';
+                    editButton.onclick = (e) => {
+                        e.stopPropagation();
+                        this.showTaskModal(index, true);
+                    };
+                    preview.appendChild(editButton);
+                }
+
+                back.appendChild(preview);
+            }
         });
 
         console.log('界面更新完成，当前游戏板状态:', this.board);
@@ -321,6 +362,12 @@ class BingoGame {
                     submission.fileData = base64File;
                     submission.fileType = file.type;
                     submission.fileName = file.name;
+
+                    console.log('File prepared for upload:', {
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
                 } catch (error) {
                     console.error('File processing failed:', error);
                     alert(error.message);
@@ -454,24 +501,17 @@ class BingoGame {
     async viewSubmission(index) {
         const cell = this.board[index];
         if (!cell?.submission) {
-            console.log('没有找到提交内容');
+            console.log('No submission found');
             return;
         }
 
         try {
             if (cell.submission.fileUrl) {
-                // 如果已经有 URL，直接使用
+                console.log('Opening file URL:', cell.submission.fileUrl);
                 window.open(cell.submission.fileUrl, '_blank');
-            } else if (cell.submission.filePath) {
-                // 否则尝试获取新的 URL
-                const url = await window.API.getSubmissionFileUrl(cell.submission.filePath);
-                if (url) {
-                    window.open(url, '_blank');
-                } else {
-                    throw new Error('无法获取文件URL');
-                }
             } else {
-                console.log('该提交没有附件');
+                console.log('No file URL found in submission');
+                alert('No file available for viewing');
             }
         } catch (error) {
             console.error('Failed to view file:', error);
