@@ -184,8 +184,8 @@ class BingoGame {
             cellElement.appendChild(front);
             cellElement.appendChild(back);
 
-            // 只在未完成时添加点击事件
-            if (!cell.completed || !this.isBingo) {
+            // 修改点击事件绑定
+            if (!this.isBingo) {  // 只要游戏未完成就添加点击事件
                 cellElement.onclick = () => this.handleCellClick(index);
             }
 
@@ -204,15 +204,17 @@ class BingoGame {
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
         
+        if (!this.board[index]) return;
+
         // 如果游戏已完成，不允许任何修改
         if (this.isBingo) {
+            console.log('游戏已完成，无法修改');
             return;
         }
 
-        if (!this.board[index]) return;
-
         // 如果已完成但游戏未结束，允许修改
         if (this.board[index].completed) {
+            console.log('允许修改已完成的任务');
             this.showTaskModal(index, true); // 传入 true 表示是修改模式
             return;
         }
@@ -293,7 +295,13 @@ class BingoGame {
         // 绑定提交事件
         form.onsubmit = async (e) => {
             e.preventDefault();
-            await this.handleTaskSubmit();
+            try {
+                await this.handleTaskSubmit();
+                console.log('任务提交/修改成功');
+            } catch (error) {
+                console.error('任务提交/修改失败:', error);
+                alert('提交失败：' + (error.message || '请重试'));
+            }
         };
     }
 
