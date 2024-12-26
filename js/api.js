@@ -19,21 +19,7 @@ function initAPI() {
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo',
-            {
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                },
-                global: {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation'
-                    }
-                }
-            }
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
         );
 
         // 定义为全局变量
@@ -238,7 +224,12 @@ function initAPI() {
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
                         .select('*')
-                        .order('completion_time', { ascending: true });
+                        .order('completion_time', { ascending: true })
+                        .headers({
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        });
 
                     if (error) {
                         console.error('获取排行榜数据失败:', error);
@@ -311,22 +302,20 @@ function initAPI() {
                                     
                                     console.log('准备上传文件:', {
                                         fileName: safeFileName,
-                                        fileType: cell.submission.fileType,
+                                        fileType: cell.submission.file.type,
                                         fileSize: cell.submission.file.size
                                     });
-
-                                    // 创建 FormData
-                                    const formData = new FormData();
-                                    formData.append('file', cell.submission.file);
 
                                     // 直接上传文件对象
                                     const { data, error: uploadError } = await supabaseClient
                                         .storage
                                         .from('submissions')
                                         .upload(safeFileName, cell.submission.file, {
-                                            contentType: cell.submission.file.type, // 使用文件的实际类型
-                                            cacheControl: '3600',
-                                            upsert: true
+                                            contentType: cell.submission.file.type,
+                                            duplex: 'half',
+                                            headers: {
+                                                'x-upsert': 'true'
+                                            }
                                         });
 
                                     if (uploadError) {
@@ -343,7 +332,7 @@ function initAPI() {
                                     processedSubmission.fileUrl = publicUrl;
                                     processedSubmission.fileName = originalName;
                                     processedSubmission.storagePath = safeFileName;
-                                    processedSubmission.fileType = cell.submission.file.type; // 使用文件的实际类型
+                                    processedSubmission.fileType = cell.submission.file.type;
                                     
                                     console.log('文件上传成功:', {
                                         publicUrl,
