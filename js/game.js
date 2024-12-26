@@ -49,11 +49,20 @@ class BingoGame {
             if (isCompleted) {
                 console.log('游戏已完成');
                 this.isBingo = true;
-                const bingoModal = document.getElementById('bingoModal');
-                if (bingoModal) {
-                    bingoModal.classList.remove('hidden');
+                
+                // 获取完成时间
+                const { data: leaderboardData } = await window.API.getTeamLeaderboard(this.currentUser.team_name);
+                if (leaderboardData) {
+                    const minutes = Math.floor(leaderboardData.completion_time / 60000);
+                    const seconds = Math.floor((leaderboardData.completion_time % 60000) / 1000);
+                    document.getElementById('completedTime').textContent = `${minutes}m ${seconds}s`;
                 }
-                return;
+
+                // 显示完成状态视图
+                const completionView = document.getElementById('completionView');
+                if (completionView) {
+                    completionView.classList.remove('hidden');
+                }
             }
 
             // 尝试恢复进度
@@ -118,7 +127,7 @@ class BingoGame {
         // 更新团队信息
         const teamInfo = document.getElementById('teamInfo');
         if (teamInfo) {
-            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
+            teamInfo.textContent = `Team: ${this.currentUser.team_name}`;
         }
 
         // 更新游戏板
@@ -145,44 +154,49 @@ class BingoGame {
             
             // 添加基础样式 - 使用固定尺寸的正方形
             cellDiv.className = 'w-full relative rounded shadow cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center overflow-hidden';
-            cellDiv.style.aspectRatio = '1'; // 确保正方形
-            cellDiv.style.minHeight = '150px'; // 设置最小高度
+            cellDiv.style.aspectRatio = '1';
+            cellDiv.style.minHeight = '150px';
             
-            // 根据状态添加额外样式
             if (cell.completed) {
                 // 已完成的格子
                 cellDiv.classList.add('bg-green-100', 'text-green-900', 'hover:bg-green-200', 'p-4');
                 let content = `
-                    <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
+                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
                     <div class="text-sm mb-2">${cell.question}</div>
-                    <div class="text-xs text-green-700 mb-2">已完成</div>`;
+                    <div class="text-xs text-green-700 mb-2">Completed</div>`;
                 
-                // 如果有提交记录，添加查看按钮
                 if (cell.submission) {
                     content += `
                         <button onclick="window.game.showSubmissionDetails(${index})" 
                                 class="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
-                            查看提交
+                            View Submission
                         </button>`;
                 }
                 
                 cellDiv.innerHTML = content;
-            } else if (cell.flipped) {
+            } else if (cell.flipped && !this.isBingo) {
                 // 已翻开但未完成的格子
                 cellDiv.classList.add('bg-white', 'hover:bg-gray-50', 'border', 'border-gray-200', 'p-4');
                 cellDiv.innerHTML = `
-                    <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
+                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
                     <button onclick="window.game.showTaskModal(${index})" 
                             class="mt-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
-                        提交答案
+                        Submit Answer
                     </button>
                 `;
-            } else {
+            } else if (!this.isBingo) {
                 // 未翻开的格子
                 cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600', 'transform', 'hover:scale-105', 'transition-transform');
                 cellDiv.innerHTML = `
                     <div class="text-sm opacity-70">click</div>
+                `;
+            } else {
+                // 游戏已完成，显示所有题目
+                cellDiv.classList.add('bg-gray-100', 'text-gray-700', 'p-4');
+                cellDiv.innerHTML = `
+                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
+                    <div class="text-sm">${cell.question}</div>
                 `;
             }
 
