@@ -1,31 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Console - Bingo Game</title>
+    <title>管理员控制台 - Bingo 游戏</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <!-- Login Section -->
     <div id="loginSection" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-md w-full space-y-8">
             <div>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Admin Login
+                    管理员登录
                 </h2>
             </div>
             <form id="adminLoginForm" class="space-y-6">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700">
-                        Username
+                        用户名
                     </label>
                     <input type="text" id="username" name="username" required
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">
-                        Password
+                        密码
                     </label>
                     <input type="password" id="password" name="password" required
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -33,77 +32,72 @@
                 <div>
                     <button type="submit"
                         class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Login
+                        登录
                     </button>
                 </div>
             </form>
             
             <div class="text-center">
                 <a href="../index.html" class="text-sm text-indigo-600 hover:text-indigo-500">
-                    Back to Home
+                    返回首页
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Admin Panel Section -->
-    <div id="adminPanel" class="hidden min-h-screen py-6 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto">
-            <div class="mb-6 flex flex-col sm:flex-row justify-between items-center">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Admin Console</h1>
+    <div id="adminPanel" class="hidden min-h-screen py-6 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-900">管理员控制台</h1>
                 <button onclick="handleLogout()"
                     class="text-red-600 hover:text-red-500">
-                    Logout
+                    退出登录
                 </button>
             </div>
 
-            <!-- Admin Settings -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
                 <div class="flex justify-between items-center cursor-pointer" onclick="togglePanel('adminSettings')">
-                    <h2 class="text-lg sm:text-xl font-semibold">Admin Settings</h2>
+                    <h2 class="text-xl font-semibold">管理员设置</h2>
                     <svg id="adminSettings-arrow" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
                 <div id="adminSettings-panel" class="hidden mt-4">
                     <form id="adminSettingsForm" class="space-y-4">
-                        <div class="grid grid-cols-1 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">New Username</label>
-                                <input type="text" id="newUsername"
-                                    class="mt-1 block w-full border rounded-md px-3 py-2"
-                                    placeholder="Enter new username">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">New Password</label>
-                                <input type="password" id="newPassword"
-                                    class="mt-1 block w-full border rounded-md px-3 py-2"
-                                    placeholder="Enter new password">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                                <input type="password" id="confirmPassword"
-                                    class="mt-1 block w-full border rounded-md px-3 py-2"
-                                    placeholder="Confirm new password">
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">新用户名</label>
+                            <input type="text" id="newUsername"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="输入新用户名">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">新密码</label>
+                            <input type="password" id="newPassword"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="输入新密码">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">确认新密码</label>
+                            <input type="password" id="confirmPassword"
+                                class="mt-1 block w-full border rounded-md px-3 py-2"
+                                placeholder="再次输入新密码">
                         </div>
                         <button type="submit"
-                            class="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-                            Update Admin Info
+                            class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                            更新管理员信息
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- Game Settings -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-                <h2 class="text-lg sm:text-xl font-semibold mb-4">Game Settings</h2>
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">游戏设置</h2>
                 <form id="gameSettingsForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Bingo Grid Size</label>
-                        <div class="mt-1 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <label class="block text-sm font-medium text-gray-700">Bingo 格子大小</label>
+                        <div class="mt-1 flex items-center gap-4">
                             <select id="gridSize" 
-                                class="block w-full sm:w-32 border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                class="block w-32 border rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="3">3 x 3</option>
                                 <option value="4">4 x 4</option>
                                 <option value="5" selected>5 x 5</option>
@@ -111,91 +105,97 @@
                                 <option value="7">7 x 7</option>
                             </select>
                             <button type="submit"
-                                class="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-                                Update Settings
+                                class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                                更新设置
                             </button>
                         </div>
-                        <p class="mt-1 text-sm text-gray-500">Choose the size of the Bingo board (default 5x5)</p>
+                        <p class="mt-1 text-sm text-gray-500">选择 Bingo 游戏板的大小（默认 5x5）</p>
                     </div>
                 </form>
             </div>
 
-            <!-- Question Management -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-                <h2 class="text-lg sm:text-xl font-semibold mb-4">Question Management</h2>
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">题目管理</h2>
                 <form id="addQuestionForm" class="mb-6">
-                    <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex gap-4">
                         <input type="text" id="newQuestion" required
                             class="flex-1 border rounded px-3 py-2"
-                            placeholder="Enter new question">
+                            placeholder="输入新题目">
                         <button type="submit"
-                            class="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            Add Question
+                            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            添加题目
                         </button>
                     </div>
                 </form>
 
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                    <div class="flex items-center gap-2 mb-2 sm:mb-0">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
                         <input type="checkbox" id="selectAllQuestions" 
                             class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                        <label for="selectAllQuestions" class="text-sm text-gray-600">Select All</label>
+                        <label for="selectAllQuestions" class="text-sm text-gray-600">全选</label>
                     </div>
                     <button id="batchDeleteBtn"
                         class="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-                        disabled>
-                        Batch Delete
+                        disabled
+                    >
+                        批量删除
                     </button>
                 </div>
 
                 <div id="questionsList" class="space-y-4">
-                    <!-- Questions will be dynamically generated by JavaScript -->
+                    <!-- 题目列表将通过 JavaScript 动态生成 -->
                 </div>
             </div>
 
-            <!-- System Management -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-                <h2 class="text-lg sm:text-xl font-semibold mb-4">System Management</h2>
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">系统管理</h2>
                 <div class="space-y-4">
                     <div>
                         <button onclick="window.adminPanel.handleReset()"
-                            class="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                            Reset All Data
+                            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                            重置所有数据
                         </button>
                         <p class="mt-2 text-sm text-gray-500">
-                            Warning: This will clear all game progress, leaderboard, and question data. This action cannot be undone.
+                            警告：这将清除所有游戏进度、排行榜和题目数据。此操作不可撤销。
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom Navigation -->
-            <div class="flex flex-col sm:flex-row gap-4">
-                <a href="leaderboard.html" class="text-center sm:text-left text-indigo-600 hover:text-indigo-500">
-                    View Leaderboard
+            <div class="flex gap-4">
+                <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
+                    查看排行榜
                 </a>
-                <a href="../index.html" class="text-center sm:text-left text-indigo-600 hover:text-indigo-500">
-                    Back to Home
+                <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
+                    返回首页
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- 先加载 Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 添加调试代码 -->
     <script>
-        console.log('Checking if Supabase is loaded:', {
+        console.log('检查 Supabase 是否加载:', {
             supabase: window.supabase,
             hasCreateClient: window.supabase?.createClient
         });
     </script>
+
+    <!-- 然后加载 API -->
     <script src="../js/api.js"></script>
+
+    <!-- 添加调试代码 -->
     <script>
-        console.log('Checking if API is loaded:', {
+        console.log('检查 API 是否加载:', {
             API: window.API,
             hasAdminLogin: window.API?.adminLogin
         });
     </script>
+
+    <!-- 最后加载管理员脚本 -->
     <script src="../js/admin.js"></script>
 </body>
 </html> 

@@ -1,77 +1,274 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Completion - Bingo Game</title>
+    <title>游戏完成 - Bingo 游戏</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen py-6 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto">
-            <!-- Header -->
-            <div class="mb-6 flex flex-col sm:flex-row justify-between items-center">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Game Completed!</h1>
-                    <p class="text-sm text-gray-600">Team: <span id="teamName" class="font-semibold"></span></p>
-                    <p class="text-sm text-gray-600">Leader: <span id="leaderName" class="font-semibold"></span></p>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-4 mt-4 sm:mt-0">
+    <div class="min-h-screen py-6 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-900">游戏完成概览</h1>
+                <div class="flex gap-4">
                     <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
-                        View Leaderboard
+                        查看排行榜
                     </a>
                     <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
-                        Back to Home
+                        返回首页
                     </a>
                 </div>
             </div>
 
-            <!-- Completion Stats -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Completion Time -->
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h2 class="text-lg font-semibold mb-2 text-green-800">Completion Time</h2>
-                        <div id="completionTime" class="text-3xl font-mono text-green-700"></div>
-                    </div>
-                    <!-- Tasks Completed -->
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h2 class="text-lg font-semibold mb-2 text-green-800">Tasks Completed</h2>
-                        <div id="tasksCompleted" class="text-3xl font-mono text-green-700">25/25</div>
-                    </div>
-                    <!-- Status -->
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h2 class="text-lg font-semibold mb-2 text-green-800">Status</h2>
-                        <div class="text-3xl font-mono text-green-700">Completed</div>
-                    </div>
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-green-600">恭喜完成 Bingo 游戏！</h2>
+                    <p class="text-gray-600 mt-2" id="teamInfo"></p>
+                    <p class="text-gray-600" id="completionTime"></p>
                 </div>
             </div>
 
-            <!-- Submission Review -->
-            <div class="bg-white shadow rounded-lg p-4 sm:p-6">
-                <h2 class="text-lg sm:text-xl font-semibold mb-4">Task Submissions</h2>
-                <div id="submissionsList" class="space-y-4">
-                    <!-- Submissions will be dynamically generated -->
-                </div>
+            <div id="gameBoard" class="grid grid-cols-5 gap-4">
+                <!-- 游戏格子将通过 JavaScript 动态生成 -->
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        console.log('Checking if Supabase is loaded:', {
-            supabase: window.supabase,
-            hasCreateClient: window.supabase?.createClient
-        });
-    </script>
     <script src="../js/api.js"></script>
     <script>
-        console.log('Checking if API is loaded:', {
-            API: window.API,
-            hasGetGameProgress: window.API?.getGameProgress
+        document.addEventListener('DOMContentLoaded', async () => {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('请先登录');
+                window.location.href = '../index.html';
+                return;
+            }
+
+            // 显示团队信息
+            document.getElementById('teamInfo').textContent = `团队：${currentUser.teamName}`;
+
+            try {
+                // 获取完成记录
+                const leaderboard = await API.getLeaderboard();
+                const teamRecord = leaderboard.find(record => record.teamName === currentUser.teamName);
+                
+                if (teamRecord) {
+                    const minutes = Math.floor(teamRecord.score / 60);
+                    const seconds = teamRecord.score % 60;
+                    document.getElementById('completionTime').textContent = 
+                        `完成时间：${minutes}分${seconds}秒`;
+                }
+
+                // 获取游戏进度显示最终状态
+                const progress = await API.getGameProgress(currentUser.teamName);
+                if (progress && progress.board) {
+                    renderCompletedBoard(progress.board);
+                }
+            } catch (error) {
+                console.error('Failed to load completion data:', error);
+            }
         });
+
+        function renderCompletedBoard(board) {
+            if (!Array.isArray(board)) {
+                console.error('无效的棋盘数据');
+                return;
+            }
+
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            try {
+                // 找出构成 bingo 的格子
+                const bingoLines = findBingoLines(board);
+                
+                // 先渲染已完成的格子
+                const completedCells = board.filter(cell => cell.completed);
+                
+                // 创建完成概览标题
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'col-span-full mb-4 text-xl font-bold text-gray-800';
+                titleDiv.textContent = `已完成任务（${completedCells.length}/${board.length}）`;
+                gameBoard.appendChild(titleDiv);
+
+                // 渲染每个已完成的格子
+                completedCells.forEach((cell, index) => {
+                    const cellElement = document.createElement('div');
+                    const isBingoCell = bingoLines.includes(board.indexOf(cell));
+                    
+                    cellElement.className = `col-span-1 bg-white rounded-lg shadow p-4 flex flex-col relative
+                        ${isBingoCell ? 'ring-2 ring-green-500' : ''}`;
+                    
+                    cellElement.innerHTML = `
+                        ${isBingoCell ? '<div class="absolute top-2 right-2 text-green-500 font-bold">★</div>' : ''}
+                        <div class="mb-3">
+                            <h3 class="text-sm font-medium text-gray-900">题目 ${board.indexOf(cell) + 1}</h3>
+                            <p class="text-sm text-gray-600">${cell.question || '未知题目'}</p>
+                        </div>
+                        <div class="preview-container flex-grow flex items-center justify-center border-t pt-3">
+                            <div class="w-full">
+                                <p class="text-xs text-gray-500 mb-2">提交内容：</p>
+                                ${renderPreview(cell)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    gameBoard.appendChild(cellElement);
+                });
+            } catch (error) {
+                console.error('渲染棋盘失败:', error);
+                gameBoard.innerHTML = '<p class="text-red-500">加载游戏数据失败</p>';
+            }
+        }
+
+        function renderPreview(cell) {
+            if (!cell.preview) return '<span class="text-gray-500">已完成</span>';
+
+            if (cell.fileType.startsWith('image/')) {
+                return `
+                    <div class="flex flex-col items-center">
+                        <img src="${cell.preview}" 
+                            class="max-w-full max-h-[150px] object-contain rounded cursor-pointer" 
+                            alt="预览"
+                            onclick="showPreview('${cell.preview}', '${cell.fileType}')"
+                        >
+                        <span class="text-xs text-gray-500 mt-1">点击查看大图</span>
+                    </div>
+                `;
+            } else if (cell.fileType.startsWith('video/')) {
+                return `
+                    <div class="flex flex-col items-center">
+                        <div class="relative cursor-pointer w-full" onclick="showPreview('${cell.preview}', '${cell.fileType}')">
+                            <video class="max-w-full max-h-[150px] rounded mx-auto">
+                                <source src="${cell.preview}" type="${cell.fileType}">
+                            </video>
+                            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-20">
+                                <svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <span class="text-xs text-gray-500 mt-1">点击播放视频</span>
+                    </div>
+                `;
+            } else if (cell.fileType.startsWith('text/')) {
+                return `
+                    <div class="bg-gray-50 p-3 rounded">
+                        <p class="text-sm text-gray-700">${cell.preview}</p>
+                    </div>
+                `;
+            }
+            
+            return `<span class="text-gray-500">已完成</span>`;
+        }
+
+        // 添加预览弹窗功能
+        function showPreview(preview, fileType) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.onclick = () => modal.remove();
+
+            const content = document.createElement('div');
+            content.className = 'max-w-4xl max-h-[90vh] p-4';
+            content.onclick = (e) => e.stopPropagation();
+
+            if (fileType.startsWith('image/')) {
+                content.innerHTML = `
+                    <img src="${preview}" class="max-w-full max-h-[80vh] object-contain" alt="预览">
+                `;
+            } else if (fileType.startsWith('video/')) {
+                content.innerHTML = `
+                    <div class="flex flex-col items-center gap-4">
+                        <video class="max-w-full max-h-[80vh]" controls autoplay>
+                            <source src="${preview}" type="${fileType}">
+                        </video>
+                        <a href="${preview}" 
+                           download="video.${fileType.split('/')[1]}"
+                           class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                           onclick="event.stopPropagation()"
+                        >
+                            下载视频
+                        </a>
+                    </div>
+                `;
+            }
+
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        // 添加查找 bingo 线的函数
+        function findBingoLines(board) {
+            if (!Array.isArray(board) || board.length === 0) {
+                console.error('无效的棋盘数据');
+                return [];
+            }
+
+            const size = Math.sqrt(board.length); // 自动计算棋盘大小
+            if (!Number.isInteger(size)) {
+                console.error('棋盘数据不完整');
+                return [];
+            }
+
+            const bingoIndices = new Set();
+
+            try {
+                // 检查行
+                for (let i = 0; i < size; i++) {
+                    if (checkLine(board, i * size, 1, size)) {
+                        for (let j = 0; j < size; j++) {
+                            bingoIndices.add(i * size + j);
+                        }
+                    }
+                }
+
+                // 检查列
+                for (let i = 0; i < size; i++) {
+                    if (checkLine(board, i, size, size)) {
+                        for (let j = 0; j < size; j++) {
+                            bingoIndices.add(i + j * size);
+                        }
+                    }
+                }
+
+                // 检查主对角线
+                if (checkLine(board, 0, size + 1, size)) {
+                    for (let i = 0; i < size; i++) {
+                        bingoIndices.add(i * (size + 1));
+                    }
+                }
+
+                // 检查副对角线
+                if (checkLine(board, size - 1, size - 1, size)) {
+                    for (let i = 0; i < size; i++) {
+                        bingoIndices.add((i + 1) * (size - 1));
+                    }
+                }
+
+                return Array.from(bingoIndices);
+            } catch (error) {
+                console.error('查找 bingo 线失败:', error);
+                return [];
+            }
+        }
+
+        function checkLine(board, start, step, count) {
+            try {
+                for (let i = 0; i < count; i++) {
+                    const index = start + i * step;
+                    if (!board[index] || !board[index].completed) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (error) {
+                console.error('检查行/列失败:', error);
+                return false;
+            }
+        }
     </script>
-    <script src="../js/completion.js"></script>
 </body>
 </html> 
