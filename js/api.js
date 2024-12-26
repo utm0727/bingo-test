@@ -283,93 +283,12 @@ function initAPI() {
                 try {
                     console.log('保存游戏进度:', { teamName, progress: progressData });
                     
-                    // 处理每个格子的提交内容
-                    const processedBoard = await Promise.all(progressData.board.map(async (cell) => {
-                        if (cell.submission) {
-                            // 创建基础的提交信息
-                            const processedSubmission = {
-                                timestamp: cell.submission.timestamp,
-                                description: cell.submission.description || null,
-                                // 保留之前的文件信息
-                                fileUrl: cell.submission.fileUrl,
-                                fileName: cell.submission.fileName,
-                                storagePath: cell.submission.storagePath,
-                                fileType: cell.submission.fileType
-                            };
-
-                            // 如果有新的文件数据，上传到 Storage
-                            if (cell.submission.file) {
-                                try {
-                                    // 生成安全的文件名
-                                    const timestamp = Date.now();
-                                    const originalName = cell.submission.fileName;
-                                    const fileExt = originalName.split('.').pop().toLowerCase();
-                                    const safeFileName = `${teamName}_${timestamp}.${fileExt}`;
-                                    
-                                    console.log('准备上传文件:', {
-                                        fileName: safeFileName,
-                                        fileType: cell.submission.file.type,
-                                        fileSize: cell.submission.file.size
-                                    });
-
-                                    // 直接上传文件对象
-                                    const { data, error: uploadError } = await supabaseClient
-                                        .storage
-                                        .from('submissions')
-                                        .upload(safeFileName, cell.submission.file, {
-                                            contentType: cell.submission.file.type,
-                                            duplex: 'half',
-                                            headers: {
-                                                'x-upsert': 'true'
-                                            }
-                                        });
-
-                                    if (uploadError) {
-                                        console.error('上传错误:', uploadError);
-                                        throw uploadError;
-                                    }
-
-                                    // 获取文件的公共URL
-                                    const { data: { publicUrl } } = supabaseClient
-                                        .storage
-                                        .from('submissions')
-                                        .getPublicUrl(safeFileName);
-
-                                    // 更新文件信息
-                                    processedSubmission.fileUrl = publicUrl;
-                                    processedSubmission.fileName = originalName;
-                                    processedSubmission.storagePath = safeFileName;
-                                    processedSubmission.fileType = cell.submission.file.type;
-                                    
-                                    console.log('文件上传成功:', {
-                                        publicUrl,
-                                        fileName: originalName,
-                                        storagePath: safeFileName,
-                                        fileType: cell.submission.file.type
-                                    });
-                                } catch (error) {
-                                    console.error('文件上传失败:', error);
-                                    throw error;
-                                }
-                            }
-
-                            return {
-                                ...cell,
-                                submission: processedSubmission
-                            };
-                        }
-                        return cell;
-                    }));
-
                     // 更新进度数据
                     const { error } = await supabaseClient
                         .from('game_progress')
                         .upsert({
                             team_name: teamName,
-                            progress: {
-                                ...progressData,
-                                board: processedBoard
-                            }
+                            progress: progressData
                         }, {
                             onConflict: 'team_name'
                         });
@@ -750,6 +669,76 @@ function initAPI() {
                     reader.onerror = error => reject(error);
                     reader.readAsDataURL(file);
                 });
+            },
+
+            // 添加文件上传方法
+            async uploadFile(fileName, file) {
+                try {
+                    console.log('开始上传文件:', {
+                        fileName,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
+
+                    // 上传文件
+                    const { data, error: uploadError } = await supabaseClient
+                        .storage
+                        .from('submissions')
+                        .upload(fileName, file, {
+                            contentType: file.type,
+                            duplex: 'half',
+                            headers: {
+                                'x-upsert': 'true'
+                            }
+                        });
+
+                    if (uploadError) {
+                        console.error('上传错误:', uploadError);
+                        throw uploadError;
+                    }
+
+                    // 获取文件的公共URL
+                    const { data: { publicUrl } } = supabaseClient
+                        .storage
+                        .from('submissions')
+                        .getPublicUrl(fileName);
+
+                    console.log('文件上传成功:', {
+                        fileName,
+                        publicUrl
+                    });
+
+                    return {
+                        fileUrl: publicUrl,
+                        storagePath: fileName
+                    };
+                } catch (error) {
+                    console.error('文件上传失败:', error);
+                    throw error;
+                }
+            },
+
+            // 添加文件删除方法
+            async deleteFile(filePath) {
+                try {
+                    console.log('开始删除文件:', filePath);
+                    
+                    const { error } = await supabaseClient
+                        .storage
+                        .from('submissions')
+                        .remove([filePath]);
+
+                    if (error) {
+                        console.error('删除文件失败:', error);
+                        throw error;
+                    }
+
+                    console.log('文件删除成功:', filePath);
+                    return true;
+                } catch (error) {
+                    console.error('删除文件失败:', error);
+                    throw error;
+                }
             }
         };
 

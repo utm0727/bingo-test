@@ -308,13 +308,9 @@ class BingoGame {
 
             // 创建提交对象
             const submission = {
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                description: description || null
             };
-
-            // 如果有文字说明，添加到提交中
-            if (description) {
-                submission.description = description;
-            }
 
             // 如果有文件，处理文件上传
             if (file) {
@@ -332,19 +328,39 @@ class BingoGame {
                     console.log('处理文件上传:', {
                         fileName: file.name,
                         fileType: file.type,
-                        fileSize: file.size,
-                        file: file
+                        fileSize: file.size
                     });
 
-                    // 保存文件对象和相关信息
-                    submission.file = file;
-                    submission.fileName = file.name;
-                    // 不需要单独存储 fileType，因为它包含在 file 对象中
+                    // 生成安全的文件名
+                    const timestamp = Date.now();
+                    const fileExt = file.name.split('.').pop().toLowerCase();
+                    const safeFileName = `${this.currentUser.team_name}_${timestamp}.${fileExt}`;
 
-                    console.log('文件已准备好上传:', {
+                    // 如果是编辑模式且有旧文件，先删除旧文件
+                    const oldSubmission = this.board[this.currentTaskIndex].submission;
+                    if (oldSubmission && oldSubmission.storagePath) {
+                        try {
+                            await window.API.deleteFile(oldSubmission.storagePath);
+                            console.log('旧文件已删除:', oldSubmission.storagePath);
+                        } catch (error) {
+                            console.error('删除旧文件失败:', error);
+                        }
+                    }
+
+                    // 上传新文件
+                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
+                    
+                    // 更新提交对象
+                    submission.fileUrl = fileUrl;
+                    submission.fileName = file.name;
+                    submission.storagePath = storagePath;
+                    submission.fileType = file.type;
+
+                    console.log('文件已上传:', {
+                        fileUrl,
                         fileName: file.name,
-                        fileType: file.type,
-                        fileSize: file.size
+                        storagePath,
+                        fileType: file.type
                     });
                 } catch (error) {
                     console.error('文件处理失败:', error);
