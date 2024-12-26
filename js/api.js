@@ -781,12 +781,32 @@ function initAPI() {
                     console.log('文件上传成功:', {
                         originalName: file.name,
                         savedAs: safeFileName,
-                        publicUrl
+                        publicUrl,
+                        filePath: safeFileName // 添加文件路径
                     });
 
-                    return publicUrl;
+                    return {
+                        url: publicUrl,
+                        path: safeFileName
+                    };
                 } catch (error) {
                     console.error('文件上传失败:', error);
+                    throw error;
+                }
+            },
+
+            // 在 API 对象中添加删除文件方法
+            async deleteFile(filePath) {
+                try {
+                    const { error } = await supabaseClient
+                        .storage
+                        .from('submissions')
+                        .remove([filePath]);
+
+                    if (error) throw error;
+                    console.log('文件删除成功:', filePath);
+                } catch (error) {
+                    console.error('删除文件失败:', error);
                     throw error;
                 }
             }

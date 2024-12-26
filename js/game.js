@@ -343,22 +343,36 @@ class BingoGame {
                 description: description || null
             };
 
+            // 如果是编辑模式且之前有文件，先删除旧文件
+            const currentCell = this.board[this.currentTaskIndex];
+            if (currentCell?.submission?.filePath) {
+                try {
+                    await window.API.deleteFile(currentCell.submission.filePath);
+                    console.log('旧文件已删除');
+                } catch (error) {
+                    console.error('删除旧文件失败:', error);
+                    // 继续处理，不阻止新文件上传
+                }
+            }
+
             // 如果有文件，处理文件上传
             if (file) {
                 try {
                     // 生成唯一的文件名
                     const fileExt = file.name.split('.').pop();
-                    const uniqueFileName = `${this.currentUser.team_name}_${Date.now()}.${fileExt}`;
+                    const uniqueFileName = `${this.currentUser.team_name}_${this.board[this.currentTaskIndex].id}_${Date.now()}.${fileExt}`;
 
                     // 上传文件
-                    const fileUrl = await window.API.uploadFile(file, uniqueFileName);
-                    submission.fileUrl = fileUrl;
+                    const fileResult = await window.API.uploadFile(file, uniqueFileName);
+                    submission.fileUrl = fileResult.url;
+                    submission.filePath = fileResult.path; // 保存文件路径
                     submission.fileName = file.name;
                     submission.fileType = file.type;
 
                     console.log('File uploaded successfully:', {
                         fileName: file.name,
-                        fileUrl: fileUrl
+                        fileUrl: fileResult.url,
+                        filePath: fileResult.path
                     });
                 } catch (error) {
                     console.error('File upload failed:', error);
@@ -492,7 +506,12 @@ class BingoGame {
         try {
             if (cell.submission.fileUrl) {
                 console.log('Opening file URL:', cell.submission.fileUrl);
-                window.open(cell.submission.fileUrl, '_blank');
+                // 如果 URL 不是完整的，构建完整的 URL
+                const fileUrl = cell.submission.fileUrl.startsWith('http') 
+                    ? cell.submission.fileUrl 
+                    : `https://vwkkwthrkqyjmirsgqoo.supabase.co/storage/v1/object/public/submissions/${cell.submission.filePath}`;
+                
+                window.open(fileUrl, '_blank');
             } else {
                 console.log('No file URL found in submission');
                 alert('No file available for viewing');
