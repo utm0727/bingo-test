@@ -325,6 +325,42 @@ class AdminPanel {
         }
     }
 
+    // 添加新方法：更新格子大小选项
+    async updateGridSizeOptions() {
+        try {
+            const questions = await API.getQuestions();
+            const uniqueQuestions = Array.from(new Set(questions.map(q => q.question))).length;
+            const maxPossibleSize = Math.floor(Math.sqrt(uniqueQuestions));
+            
+            const gridSizeSelector = document.getElementById('gridSize');
+            
+            // 更新选项可用性
+            Array.from(gridSizeSelector.options).forEach(option => {
+                const size = parseInt(option.value);
+                option.disabled = size * size > uniqueQuestions;
+                if (option.disabled) {
+                    option.textContent = `${size} x ${size} (需要 ${size * size} 个题目)`;
+                } else {
+                    option.textContent = `${size} x ${size}`;
+                }
+            });
+
+            // 更新提示信息
+            const infoText = document.createElement('p');
+            infoText.className = 'mt-2 text-sm text-gray-500';
+            infoText.textContent = `当前有 ${uniqueQuestions} 个不重复题目，可支持最大 ${maxPossibleSize}x${maxPossibleSize} 的格子`;
+            
+            const existingInfo = gridSizeSelector.parentElement.querySelector('p:last-child');
+            if (existingInfo) {
+                existingInfo.replaceWith(infoText);
+            } else {
+                gridSizeSelector.parentElement.appendChild(infoText);
+            }
+        } catch (error) {
+            console.error('Failed to update grid size options:', error);
+        }
+    }
+
     // 修改处理批量删除的方法
     async handleBatchDelete() {
         const checkedBoxes = document.querySelectorAll('.question-checkbox:checked');
@@ -424,6 +460,35 @@ class AdminPanel {
             console.error('重置数据失败:', error);
             alert('重置数据失败，请重试');
         }
+    }
+
+    // 清理方法
+    cleanup() {
+        // 移除所有事件监听器
+        if (this.loginForm) {
+            this.loginForm.removeEventListener('submit', this.handleLogin);
+        }
+        if (this.addQuestionForm) {
+            this.addQuestionForm.removeEventListener('submit', this.handleAddQuestion);
+        }
+        if (this.adminSettingsForm) {
+            this.adminSettingsForm.removeEventListener('submit', this.handleUpdateAdmin);
+        }
+        if (this.gameSettingsForm) {
+            this.gameSettingsForm.removeEventListener('submit', this.handleUpdateGameSettings);
+        }
+        
+        // 移除批量删除相关的事件监听器
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.removeEventListener('change', this.handleSelectAll);
+        }
+        if (this.batchDeleteBtn) {
+            this.batchDeleteBtn.removeEventListener('click', this.handleBatchDelete);
+        }
+
+        // 移除页面可见性和历史记录监听器
+        document.removeEventListener('visibilitychange', this.clearAdminSession);
+        window.removeEventListener('popstate', this.clearAdminSession);
     }
 }
 
