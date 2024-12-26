@@ -149,55 +149,24 @@ class BingoGame {
                 let content = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm mb-2">${cell.question}</div>
-                    <div class="text-xs mb-1">✓ 已完成</div>
-                `;
+                    <div class="text-xs text-green-700 mb-2">已完成</div>`;
                 
-                // 添加提交内容预览
+                // 如果有提交记录，添加查看按钮
                 if (cell.submission) {
-                    if (cell.submission.description) {
-                        content += `<div class="text-xs mt-2 text-gray-700">${cell.submission.description}</div>`;
-                    }
-                    if (cell.submission.fileUrl || cell.submission.filePath) {
-                        content += `
-                            <div class="text-xs mt-2">
-                                <a href="#" onclick="event.preventDefault(); window.game.viewSubmission(${index})" 
-                                   class="text-indigo-600 hover:text-indigo-500">
-                                    查看提交文件
-                                </a>
-                            </div>
-                        `;
-                    }
-                }
-                
-                // 如果不是 Bingo 状态，添加编辑按钮
-                if (!this.isBingo) {
                     content += `
-                        <div class="text-xs mt-2">
-                            <a href="#" onclick="event.preventDefault(); window.game.showTaskModal(${index}, true)" 
-                               class="text-blue-600 hover:text-blue-500">
-                                编辑提交
-                            </a>
-                        </div>
-                    `;
+                        <button onclick="window.game.showSubmissionDetails(${index})" 
+                                class="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
+                            查看提交
+                        </button>`;
                 }
                 
                 cellDiv.innerHTML = content;
-                
-                // 添加点击事件显示详细信息
-                cellDiv.onclick = (e) => {
-                    if (!e.target.closest('a')) {  // 如果点击的不是链接
-                        this.showSubmissionDetails(index);
-                    }
-                };
-            } else if (cell.flipped) {
-                cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
+            } else {
+                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
                 cellDiv.innerHTML = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
                 `;
-            } else {
-                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
-                cellDiv.textContent = `题目 ${index + 1}`;
             }
 
             // 添加点击事件
@@ -524,59 +493,68 @@ class BingoGame {
     }
 
     // 添加显示提交详情的方法
-    showSubmissionDetails(index) {
+    async showSubmissionDetails(index) {
         const cell = this.board[index];
-        if (!cell?.submission) return;
+        if (!cell || !cell.submission) return;
 
-        // 创建模态框
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        modal.onclick = (e) => {
-            if (e.target === modal) modal.remove();
-        };
+        let content = `
+            <h3 class="text-lg font-bold mb-4">提交详情</h3>
+            <div class="mb-4">
+                <div class="font-medium mb-2">题目 ${index + 1}:</div>
+                <div class="text-gray-700">${cell.question}</div>
+            </div>`;
 
-        // 创建内容容器
-        const content = document.createElement('div');
-        content.className = 'bg-white p-6 rounded-lg max-w-lg w-full max-h-[80vh] overflow-y-auto';
-        content.onclick = (e) => e.stopPropagation();
+        if (cell.submission.description) {
+            content += `
+                <div class="mb-4">
+                    <div class="font-medium mb-2">描述:</div>
+                    <div class="text-gray-700">${cell.submission.description}</div>
+                </div>`;
+        }
 
-        // 构建内容
-        content.innerHTML = `
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 class="text-lg font-medium">题目 ${index + 1}</h3>
-                    <p class="text-sm text-gray-600 mt-1">${cell.question}</p>
-                </div>
-                <button class="text-gray-400 hover:text-gray-500" onclick="this.closest('.fixed').remove()">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="space-y-4">
-                ${cell.submission.description ? `
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700">提交说明</h4>
-                        <p class="mt-1 text-sm text-gray-600">${cell.submission.description}</p>
-                    </div>
-                ` : ''}
-                ${cell.submission.fileUrl || cell.submission.filePath ? `
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700">提交文件</h4>
-                        <button onclick="window.game.viewSubmission(${index})" 
-                                class="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200">
-                            查看文件
-                        </button>
-                    </div>
-                ` : ''}
-                <div class="text-xs text-gray-500">
-                    提交时间: ${new Date(cell.submission.timestamp).toLocaleString()}
-                </div>
-            </div>
-        `;
+        if (cell.submission.fileUrl) {
+            const fileType = cell.submission.fileType || '';
+            content += `
+                <div class="mb-4">
+                    <div class="font-medium mb-2">提交文件:</div>
+                    <div class="text-sm text-gray-600 mb-2">${cell.submission.fileName}</div>`;
+            
+            if (fileType.startsWith('image/')) {
+                content += `
+                    <img src="${cell.submission.fileUrl}" alt="提交图片" class="max-w-full h-auto mb-2">`;
+            } else if (fileType.startsWith('video/')) {
+                content += `
+                    <video src="${cell.submission.fileUrl}" controls class="max-w-full h-auto mb-2">
+                        您的浏览器不支持视频播放
+                    </video>`;
+            }
+            
+            content += `
+                    <a href="${cell.submission.fileUrl}" target="_blank" 
+                       class="text-blue-500 hover:text-blue-600">
+                        下载文件
+                    </a>
+                </div>`;
+        }
 
-        modal.appendChild(content);
-        document.body.appendChild(modal);
+        // 如果游戏未完成，添加编辑按钮
+        if (!this.isBingo) {
+            content += `
+                <div class="mt-4">
+                    <button onclick="window.game.showTaskModal(${index}, true)" 
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        编辑提交
+                    </button>
+                </div>`;
+        }
+
+        // 使用 SweetAlert2 显示对话框
+        Swal.fire({
+            html: content,
+            width: '600px',
+            showConfirmButton: false,
+            showCloseButton: true
+        });
     }
 }
 
