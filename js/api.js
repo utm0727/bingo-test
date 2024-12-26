@@ -23,7 +23,15 @@ function initAPI() {
             {
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                global: {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    }
                 }
             }
         );
@@ -226,20 +234,15 @@ function initAPI() {
                 try {
                     console.log('开始获取排行榜数据');
                     
-                    // 从 leaderboard 表获取数据，添加 Prefer 头
+                    // 从 leaderboard 表获取数据
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
                         .select('*')
-                        .order('completion_time', { ascending: true })
-                        .headers({
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        });
+                        .order('completion_time', { ascending: true });
 
                     if (error) {
                         console.error('获取排行榜数据失败:', error);
-                        throw error;
+                        return [];
                     }
 
                     console.log('原始排行榜数据:', data);
@@ -260,7 +263,6 @@ function initAPI() {
                     return formattedData;
                 } catch (error) {
                     console.error('获取排行榜失败:', error);
-                    // 返回空数组而不是抛出错误
                     return [];
                 }
             },
