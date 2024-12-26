@@ -395,7 +395,7 @@ class BingoGame {
                     const originalExt = file.name.split('.').pop().toLowerCase();
                     // 从MIME类型获取文件类型
                     const mimeExt = file.type.split('/')[1];
-                    // 使用MIME类型的扩展名，如果没有则使用原始扩展名
+                    // 使用MIME类型的扩展名，如果���有则使用原始扩展名
                     const fileExt = mimeExt || originalExt;
                     
                     // 生成安全的文件名
@@ -421,11 +421,8 @@ class BingoGame {
                         }
                     }
 
-                    // 创建文件的副本以确保正确的类型
-                    const fileBlob = new Blob([await file.arrayBuffer()], { type: file.type });
-
                     // 上传新文件
-                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, fileBlob);
+                    const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
                     
                     // 更新提交对象
                     submission.fileUrl = fileUrl;
