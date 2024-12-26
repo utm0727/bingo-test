@@ -114,68 +114,54 @@ class BingoGame {
 
     updateUI() {
         console.log('开始更新界面');
-        // 更新团队信息
+        const board = document.getElementById('gameBoard');
         const teamInfo = document.getElementById('teamInfo');
-        if (teamInfo) {
-            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
-        }
-
-        // 更新游戏板
-        const gameBoard = document.getElementById('gameBoard');
-        if (!gameBoard) {
-            console.error('找不到游戏板元素');
+        
+        if (!board || !teamInfo) {
+            console.error('找不到必要的DOM元素');
             return;
         }
 
-        // 清空现有内容
-        gameBoard.innerHTML = '';
+        // 更新团队信息
+        teamInfo.textContent = `团队：${this.currentUser.team_name}`;
 
-        // 设置游戏板样式
-        gameBoard.style.display = 'grid';
-        gameBoard.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
-        gameBoard.style.gap = '1rem';
-        gameBoard.style.padding = '1rem';
+        // 设置网格大小
+        board.style.gridTemplateColumns = `repeat(${this.size}, minmax(0, 1fr))`;
+        board.innerHTML = '';
 
-        // 渲染每个格子
+        // 创建格子
         this.board.forEach((cell, index) => {
-            const cellDiv = document.createElement('div');
-            
-            // 添加基础样式
-            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center text-center';
-            
-            // 根据状态添加额外样式
-            if (cell.completed) {
-                cellDiv.classList.add('bg-green-100', 'text-green-900');
-                let content = `
-                    <div class="text-sm mb-2">${cell.question}</div>
-                    <div class="text-xs mb-1">✓ 已完成</div>
-                    <div class="text-xs">${cell.submission.description}</div>
+            const cellElement = document.createElement('div');
+            cellElement.className = `bingo-cell relative aspect-square ${
+                cell.completed ? 'completed' : ''
+            }`;
+
+            // 添加点击事件（无论是否完成都可以点击）
+            cellElement.onclick = () => this.handleCellClick(index);
+
+            // 创建格子内容
+            if (cell.flipped || cell.completed) {
+                cellElement.innerHTML = `
+                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 bg-white border-2 ${
+                        cell.completed ? 'border-green-500' : 'border-gray-300'
+                    } rounded-lg shadow">
+                        <p class="text-center break-words">${cell.question}</p>
+                        ${
+                            cell.completed
+                                ? '<span class="mt-2 text-green-500">已完成</span>'
+                                : ''
+                        }
+                    </div>
                 `;
-                if (cell.submission.filePath) {
-                    content += `<div class="text-xs mt-1">
-                        <a href="#" onclick="window.game.viewSubmission(${index})" class="text-indigo-600 hover:text-indigo-500">
-                            查看提交文件
-                        </a>
-                    </div>`;
-                }
-                cellDiv.innerHTML = content;
-            } else if (cell.flipped) {
-                cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
-                cellDiv.textContent = cell.question;
             } else {
-                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
-                cellDiv.textContent = '点击查看题目';
+                cellElement.innerHTML = `
+                    <div class="absolute inset-0 flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg shadow cursor-pointer hover:bg-gray-50">
+                        <span class="text-xl font-bold">?</span>
+                    </div>
+                `;
             }
 
-            // 添加点击事件
-            cellDiv.onclick = (e) => {
-                e.preventDefault();
-                if (!cell.completed && !this.isBingo) {
-                    this.handleCellClick(index);
-                }
-            };
-
-            gameBoard.appendChild(cellDiv);
+            board.appendChild(cellElement);
         });
 
         console.log('界面更新完成，当前游戏板状态:', this.board);
