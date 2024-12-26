@@ -22,6 +22,13 @@ function initAPI() {
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
         );
 
+        // 添加默认请求头
+        supabaseClient.headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Prefer': 'return=representation'
+        };
+
         // 定义为全局变量
         window.API = {
             // 登录相关方法
@@ -152,20 +159,14 @@ function initAPI() {
             // 检查游戏完成状态
             async checkGameCompletion(teamName) {
                 try {
-                    console.log('检查游戏完成状态:', teamName);
-                    
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
                         .select('*')
                         .eq('team_name', teamName)
-                        .single();
+                        .maybeSingle();
 
-                    if (error && error.code !== 'PGRST116') {  // PGRST116 是"没有找到记录"的错误
-                        console.error('检查游戏完成状态失败:', error);
-                        return false;
-                    }
-
-                    return !!data;  // 如果有记录就表示完成了
+                    if (error) throw error;
+                    return !!data;
                 } catch (error) {
                     console.error('检查游戏完成状态失败:', error);
                     return false;
@@ -218,39 +219,16 @@ function initAPI() {
             // 获取排行榜
             async getLeaderboard() {
                 try {
-                    console.log('开始获取排行榜数据');
-                    
-                    // 从 leaderboard 表获取数据
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
                         .select('*')
                         .order('completion_time', { ascending: true });
 
-                    if (error) {
-                        console.error('获取排行榜数据失败:', error);
-                        throw error;
-                    }
-
-                    console.log('原始排行榜数据:', data);
-
-                    // 确保数据存在且是数组
-                    if (!data || !Array.isArray(data)) {
-                        console.log('没有找到排行榜数据');
-                        return [];
-                    }
-
-                    // 格式化数据
-                    const formattedData = data.map(entry => ({
-                        team_name: entry.team_name,
-                        completion_time: entry.completion_time
-                    }));
-
-                    console.log('格式化后的排行榜数据:', formattedData);
-                    return formattedData;
+                    if (error) throw error;
+                    return data || [];
                 } catch (error) {
                     console.error('获取排行榜失败:', error);
-                    // 返回空数组而不是抛出错误
-                    return [];
+                    throw error;
                 }
             },
 
