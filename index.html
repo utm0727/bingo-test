@@ -75,23 +75,27 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 从 URL 参数获取团队信息
-            const urlParams = new URLSearchParams(window.location.search);
-            const teamName = urlParams.get('team');
-            const leaderName = urlParams.get('leader');
+            // 等待 API 初始化完成
+            window.addEventListener('APIReady', async () => {
+                // 从 URL 参数获取团队信息
+                const urlParams = new URLSearchParams(window.location.search);
+                const teamName = urlParams.get('team');
+                const leaderName = urlParams.get('leader');
 
-            // 如果有团队信息，自动填充表单
-            if (teamName) {
-                document.getElementById('teamName').value = decodeURIComponent(teamName);
-            }
-            if (leaderName) {
-                document.getElementById('leaderName').value = decodeURIComponent(leaderName);
-            }
+                // 如果有团队信息，自动填充表单
+                if (teamName) {
+                    document.getElementById('teamName').value = decodeURIComponent(teamName);
+                }
+                if (leaderName) {
+                    document.getElementById('leaderName').value = decodeURIComponent(leaderName);
+                }
 
-            // 如果两个字段都有值，自动点击开始游戏按钮
-            if (teamName && leaderName) {
-                document.getElementById('startGameBtn').click();
-            }
+                // 如果两个字段都有值，自动提交表单
+                if (teamName && leaderName) {
+                    const form = document.getElementById('loginForm');
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
         });
     </script>
 </body>

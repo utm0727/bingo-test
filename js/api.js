@@ -220,16 +220,16 @@ async function initAPI() {
                 try {
                     console.log('开始获取排行榜数据');
                     
-                    // 从 leaderboard 表获取数据
+                    // 从 leaderboard 表获取数据，并关联 users 表获取队长名字
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
-                        .select('*', {
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
-                            }
-                        })
+                        .select(`
+                            team_name,
+                            completion_time,
+                            users!inner (
+                                leader_name
+                            )
+                        `)
                         .order('completion_time', { ascending: true });
 
                     if (error) {
@@ -248,7 +248,8 @@ async function initAPI() {
                     // 格式化数据
                     const formattedData = data.map(entry => ({
                         team_name: entry.team_name,
-                        completion_time: entry.completion_time
+                        completion_time: entry.completion_time,
+                        leader_name: entry.users?.leader_name || ''
                     }));
 
                     console.log('格式化后的排行榜数据:', formattedData);
