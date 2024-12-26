@@ -233,11 +233,13 @@ class BingoGame {
     showTaskModal(index, isEdit = false) {
         console.log('显示任务提交对话框', { index, isEdit });
         const modal = document.getElementById('taskModal');
+        const modalTitle = document.querySelector('#taskModal h2');  // 获取标题元素
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
         const description = document.getElementById('taskDescription');
         const filePreview = document.getElementById('filePreview');
         const fileName = document.getElementById('fileName');
+        const submitButton = document.querySelector('#taskForm button[type="submit"]');  // 获取提交按钮
         
         if (!modal || !question || !form) {
             console.error('找不到必要的DOM元素');
@@ -250,19 +252,32 @@ class BingoGame {
         // 显示题目
         question.textContent = this.board[index].question;
 
+        // 更新标题和按钮文本
+        if (isEdit) {
+            modalTitle.textContent = '修改任务';
+            submitButton.textContent = '保存修改';
+        } else {
+            modalTitle.textContent = '提交任务';
+            submitButton.textContent = '提交任务';
+        }
+
         // 如果是编辑模式，填充已有内容
         if (isEdit && this.board[index].submission) {
+            console.log('正在加载已有提交内容:', this.board[index].submission);
             const submission = this.board[index].submission;
+            
+            // 填充文字说明
             description.value = submission.description || '';
             
             // 清除文件输入
             const fileInput = document.getElementById('taskFile');
             fileInput.value = '';
             
-            // 如果有已提交的文件，显示文件名
-            if (submission.filePath) {
+            // 如果有已提交的文件，显示文件信息
+            if (submission.fileUrl) {
                 filePreview.classList.remove('hidden');
                 fileName.textContent = submission.fileName || '已上传文件';
+                console.log('显示已上传文件:', submission.fileName);
             } else {
                 filePreview.classList.add('hidden');
             }
