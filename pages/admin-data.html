@@ -135,21 +135,20 @@
 
                 // 按完成时间排序
                 const sortedLeaderboard = leaderboard.sort((a, b) => {
-                    const timeA = new Date(a.completion_time).getTime();
-                    const timeB = new Date(b.completion_time).getTime();
-                    return timeA - timeB;
+                    return a.completion_time - b.completion_time;
                 });
 
                 sortedLeaderboard.forEach((entry, index) => {
                     if (!entry || !entry.completion_time) return;
 
-                    const completionTime = new Date(entry.completion_time);
-                    if (isNaN(completionTime.getTime())) {
-                        console.error('无效的完成时间:', entry.completion_time);
-                        return;
-                    }
+                    // 将秒数转换为分钟和秒
+                    const minutes = Math.floor(entry.completion_time / 60);
+                    const seconds = entry.completion_time % 60;
+                    const formattedTime = `${minutes}分${seconds}秒`;
 
-                    const formattedTime = completionTime.toLocaleString('zh-CN', {
+                    // 获取创建时间
+                    const createdAt = new Date(entry.created_at);
+                    const submitTime = createdAt.toLocaleString('zh-CN', {
                         year: 'numeric',
                         month: '2-digit',
                         day: '2-digit',
