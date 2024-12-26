@@ -220,36 +220,35 @@ async function initAPI() {
                 try {
                     console.log('开始获取排行榜数据');
                     
-                    // 从 leaderboard 表获取数据，并关联 users 表获取队长名字
-                    const { data, error } = await supabaseClient
+                    // 从 leaderboard 表获取数据
+                    const { data: leaderboardData, error: leaderboardError } = await supabaseClient
                         .from('leaderboard')
-                        .select(`
-                            team_name,
-                            completion_time,
-                            users!inner (
-                                leader_name
-                            )
-                        `)
+                        .select('*')
                         .order('completion_time', { ascending: true });
 
-                    if (error) {
-                        console.error('获取排行榜数据失败:', error);
+                    if (leaderboardError) {
+                        console.error('获取排行榜数据失败:', leaderboardError);
                         return [];
                     }
 
-                    console.log('原始排行榜数据:', data);
+                    // 获取所有用户数据
+                    const { data: usersData, error: usersError } = await supabaseClient
+                        .from('users')
+                        .select('team_name, leader_name');
 
-                    // 确保数据存在且是数组
-                    if (!data || !Array.isArray(data)) {
-                        console.log('没有找到排行榜数据');
+                    if (usersError) {
+                        console.error('获取用户数据失败:', usersError);
                         return [];
                     }
 
-                    // 格式化数据
-                    const formattedData = data.map(entry => ({
+                    // 创建用户数据的映射
+                    const userMap = new Map(usersData.map(user => [user.team_name, user.leader_name]));
+
+                    // 合并数据
+                    const formattedData = leaderboardData.map(entry => ({
                         team_name: entry.team_name,
                         completion_time: entry.completion_time,
-                        leader_name: entry.users?.leader_name || ''
+                        leader_name: userMap.get(entry.team_name) || ''
                     }));
 
                     console.log('格式化后的排行榜数据:', formattedData);
