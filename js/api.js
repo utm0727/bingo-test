@@ -696,23 +696,13 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 使用 FormData 处理文件上传
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    // 上传文件
+                    // 直接上传原始文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
                         .upload(fileName, file, {
                             contentType: file.type,
-                            cacheControl: '3600',
-                            upsert: true,
-                            duplex: 'half',
-                            headers: {
-                                'x-upsert': 'true',
-                                'Content-Type': file.type
-                            }
+                            upsert: true
                         });
 
                     if (uploadError) {
