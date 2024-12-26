@@ -1,85 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Game</title>
+    <title>Bingo 游戏</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
-        <div class="w-full max-w-md space-y-8">
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
             <div>
-                <h2 class="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
-                    Welcome to Bingo Game
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    团队登录
                 </h2>
-                <p class="mt-2 text-center text-sm text-gray-600">
-                    Please enter your team information to start
-                </p>
             </div>
             <form id="loginForm" class="mt-8 space-y-6">
-                <div class="rounded-md shadow-sm space-y-4">
-                    <div>
-                        <label for="teamName" class="block text-sm font-medium text-gray-700">
-                            Team Name
-                        </label>
-                        <input id="teamName" name="teamName" type="text" required
-                            class="mt-1 block w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-md shadow-sm 
-                                   focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
-                                   text-sm sm:text-base"
-                            placeholder="Enter your team name">
-                    </div>
-                    <div>
-                        <label for="leaderName" class="block text-sm font-medium text-gray-700">
-                            Team Leader Name
-                        </label>
-                        <input id="leaderName" name="leaderName" type="text" required
-                            class="mt-1 block w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-md shadow-sm 
-                                   focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
-                                   text-sm sm:text-base"
-                            placeholder="Enter team leader name">
-                    </div>
+                <div>
+                    <label for="teamName" class="block text-sm font-medium text-gray-700">
+                        团队名称
+                    </label>
+                    <input id="teamName" name="teamName" type="text" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
-
+                <div>
+                    <label for="leaderName" class="block text-sm font-medium text-gray-700">
+                        队长姓名
+                    </label>
+                    <input id="leaderName" name="leaderName" type="text" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
                 <div>
                     <button type="submit"
-                        class="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent rounded-md shadow-sm 
-                               text-sm sm:text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 
-                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                               transition-colors duration-200">
-                        Start Game
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        开始游戏
                     </button>
                 </div>
             </form>
             
-            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8">
-                <a href="pages/leaderboard.html" 
-                   class="text-sm sm:text-base text-indigo-600 hover:text-indigo-500 transition-colors duration-200">
-                    View Leaderboard
+            <div class="flex justify-center space-x-4">
+                <a href="pages/leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
+                    查看排行榜
                 </a>
-                <a href="pages/admin.html" 
-                   class="text-sm sm:text-base text-indigo-600 hover:text-indigo-500 transition-colors duration-200">
-                    Admin Login
+                <a href="pages/admin.html" class="text-indigo-600 hover:text-indigo-500">
+                    管理员登录
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- 先加载 Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 添加调试代码 -->
     <script>
-        console.log('Checking if Supabase is loaded:', {
+        console.log('检查 Supabase 是否加载:', {
             supabase: window.supabase,
             hasCreateClient: window.supabase?.createClient
         });
     </script>
+
+    <!-- 然后加载 API -->
     <script src="js/api.js"></script>
+
+    <!-- 添加调试代码 -->
     <script>
-        console.log('Checking if API is loaded:', {
+        console.log('检查 API 是否加载:', {
             API: window.API,
             hasLogin: window.API?.login
         });
     </script>
+
+    <!-- 最后加载认证脚本 -->
     <script src="js/auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 从 URL 参数获取团队信息
+            const urlParams = new URLSearchParams(window.location.search);
+            const teamName = urlParams.get('team');
+            const leaderName = urlParams.get('leader');
+
+            // 如果有团队信息，自动填充表单
+            if (teamName) {
+                document.getElementById('teamName').value = decodeURIComponent(teamName);
+            }
+            if (leaderName) {
+                document.getElementById('leaderName').value = decodeURIComponent(leaderName);
+            }
+
+            // 如果两个字段都有值，自动点击开始游戏按钮
+            if (teamName && leaderName) {
+                document.getElementById('startGameBtn').click();
+            }
+        });
+    </script>
 </body>
 </html> 

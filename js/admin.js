@@ -62,6 +62,7 @@ class AdminPanel {
         this.updateBatchDeleteButton();
     }
 
+    // 然后是其他方法
     init() {
         // 修改登录检查逻辑
         const isAdmin = sessionStorage.getItem('isAdmin');
@@ -86,9 +87,12 @@ class AdminPanel {
         this.adminSettingsForm.addEventListener('submit', (e) => this.handleUpdateAdmin(e));
         this.gameSettingsForm.addEventListener('submit', (e) => this.handleUpdateGameSettings(e));
         
-        // 加载题目列表和游戏设置
+        // 加载题目列表
         this.loadQuestions();
         this.loadGameSettings();
+        
+        // 初始载排行榜
+        this.refreshLeaderboard();
 
         // 添加全选和批量删除的事件监听器
         if (this.selectAllCheckbox) {
@@ -97,9 +101,6 @@ class AdminPanel {
         if (this.batchDeleteBtn) {
             this.batchDeleteBtn.addEventListener('click', () => this.handleBatchDelete());
         }
-
-        // 绑定复选框事件
-        this.bindSelectAllEvents();
     }
 
     initPanels() {
@@ -325,6 +326,96 @@ class AdminPanel {
         }
     }
 
+    // 开始定时刷新排行榜
+    startLeaderboardRefresh() {
+        // 每30秒新一次排行榜
+        this.leaderboardInterval = setInterval(() => {
+            this.refreshLeaderboard();
+        }, 30000);
+    }
+
+    // 刷新排行榜
+    async refreshLeaderboard() {
+        try {
+            const leaderboard = await API.getLeaderboard();
+            this.renderLeaderboard(leaderboard);
+        } catch (error) {
+            console.error('Failed to refresh leaderboard:', error);
+        }
+    }
+
+    // 修改渲染排行榜的方法
+    renderLeaderboard(leaderboard) {
+        const leaderboardElement = document.getElementById('adminLeaderboard');
+        if (!leaderboardElement) return;
+
+        leaderboardElement.innerHTML = leaderboard.map((team, index) => {
+            const completionDate = new Date(team.timestamp);
+            return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${index + 1}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${team.teamName}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${team.leaderName || '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${this.formatTime(team.score)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${completionDate.toLocaleString()}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // 格式化时间
+    formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
+        return `${hours}时${minutes}分${remainingSeconds}秒`;
+    }
+
+    // 在组件销毁时清理定时器
+    cleanup() {
+        if (this.leaderboardInterval) {
+            clearInterval(this.leaderboardInterval);
+        }
+    }
+
+    async handleReset() {
+        const confirmed = confirm(
+            '警告：这清除所有数据，包括：\n' +
+            '- 所有游戏进度\n' +
+            '- 所有排行榜记录\n' +
+            '- 所有题目\n\n' +
+            '此操作不可撤销！是否确定继续？'
+        );
+
+        if (!confirmed) return;
+
+        const doubleConfirmed = confirm(
+            '最后确认：\n' +
+            '您确定要重置所有数据吗？'
+        );
+
+        if (!doubleConfirmed) return;
+
+        try {
+            await API.resetAllData();
+            alert('所有数据已重置');
+            window.location.reload(); // 刷新页面以显示重置后的状态
+        } catch (error) {
+            console.error('Failed to reset data:', error);
+            alert('重置失败，请重试');
+        }
+    }
+
     // 添加新方法：更新格子大小选项
     async updateGridSizeOptions() {
         try {
@@ -425,70 +516,6 @@ class AdminPanel {
             checkbox.removeEventListener('change', handleCheckboxChange);
             checkbox.addEventListener('change', handleCheckboxChange);
         });
-    }
-
-    async handleReset() {
-        const confirmed = confirm(
-            '警告：这将清除所有数据，包括：\n' +
-            '- 所有游戏进度和玩家数据\n' +
-            '- 所有玩家提交的答案记录\n' +
-            '- 所有题目数据\n' +
-            '- 所有排行榜记录\n' +
-            '- Supabase 数据库中的所有相关数据\n\n' +
-            '此操作不可撤销！是否确定继续？'
-        );
-
-        if (!confirmed) return;
-
-        const doubleConfirmed = confirm(
-            '最后确认：\n' +
-            '您确定要重置所有数据吗？\n' +
-            '这将删除所有玩家的游戏记录和排行榜数据！'
-        );
-
-        if (!doubleConfirmed) return;
-
-        try {
-            // 调用 API 重置所有数据
-            await API.resetAllData();
-            alert('所有数据已重置成功！');
-            
-            // 重新加载题目列表和游戏设置
-            await this.loadQuestions();
-            await this.loadGameSettings();
-        } catch (error) {
-            console.error('重置数据失败:', error);
-            alert('重置数据失败，请重试');
-        }
-    }
-
-    // 清理方法
-    cleanup() {
-        // 移除所有事件监听器
-        if (this.loginForm) {
-            this.loginForm.removeEventListener('submit', this.handleLogin);
-        }
-        if (this.addQuestionForm) {
-            this.addQuestionForm.removeEventListener('submit', this.handleAddQuestion);
-        }
-        if (this.adminSettingsForm) {
-            this.adminSettingsForm.removeEventListener('submit', this.handleUpdateAdmin);
-        }
-        if (this.gameSettingsForm) {
-            this.gameSettingsForm.removeEventListener('submit', this.handleUpdateGameSettings);
-        }
-        
-        // 移除批量删除相关的事件监听器
-        if (this.selectAllCheckbox) {
-            this.selectAllCheckbox.removeEventListener('change', this.handleSelectAll);
-        }
-        if (this.batchDeleteBtn) {
-            this.batchDeleteBtn.removeEventListener('click', this.handleBatchDelete);
-        }
-
-        // 移除页面可见性和历史记录监听器
-        document.removeEventListener('visibilitychange', this.clearAdminSession);
-        window.removeEventListener('popstate', this.clearAdminSession);
     }
 }
 
