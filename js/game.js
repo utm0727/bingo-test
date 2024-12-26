@@ -395,14 +395,14 @@ class BingoGame {
                     const originalExt = file.name.split('.').pop().toLowerCase();
                     // 从MIME类型获取文件类型
                     const mimeExt = file.type.split('/')[1];
-                    // 使用MIME类型���扩展名，如果没有则使用原始扩展名
+                    // 使用MIME类型的扩展名，如果没有则使用原始扩展名
                     const fileExt = mimeExt || originalExt;
                     
                     // 生成安全的文件名
                     const timestamp = Date.now();
                     const safeFileName = `${this.currentUser.team_name}_${timestamp}.${fileExt}`;
 
-                    // 如果编辑模式且有旧文件，先删除旧文件
+                    // ���果是编辑模式且有旧文件，先删除旧文件
                     const oldSubmission = this.board[this.currentTaskIndex].submission;
                     if (oldSubmission && oldSubmission.storagePath) {
                         try {
@@ -517,47 +517,32 @@ class BingoGame {
 
     // 添加检查 Bingo 的方法
     checkBingo() {
-        const lines = [];
-        
         // 检查行
         for (let i = 0; i < this.size; i++) {
-            const rowStart = i * this.size;
-            const rowCells = Array.from({length: this.size}, (_, j) => rowStart + j);
-            if (this.checkLine(rowCells)) {
-                lines.push(rowCells);
-            }
+            if (this.checkLine(i * this.size, 1, this.size)) return true;
         }
 
         // 检查列
         for (let i = 0; i < this.size; i++) {
-            const colCells = Array.from({length: this.size}, (_, j) => i + j * this.size);
-            if (this.checkLine(colCells)) {
-                lines.push(colCells);
-            }
+            if (this.checkLine(i, this.size, this.size)) return true;
         }
 
         // 检查主对角线
-        const mainDiagonal = Array.from({length: this.size}, (_, i) => i * (this.size + 1));
-        if (this.checkLine(mainDiagonal)) {
-            lines.push(mainDiagonal);
-        }
+        if (this.checkLine(0, this.size + 1, this.size)) return true;
 
         // 检查副对角线
-        const antiDiagonal = Array.from({length: this.size}, (_, i) => (i + 1) * (this.size - 1));
-        if (this.checkLine(antiDiagonal)) {
-            lines.push(antiDiagonal);
-        }
+        if (this.checkLine(this.size - 1, this.size - 1, this.size)) return true;
 
-        // 如果有任何一条线完成，就算 Bingo
-        return lines.length > 0;
+        return false;
     }
 
     // 添加检查线的方法
-    checkLine(cells) {
-        return cells.every(index => {
-            const cell = this.board[index];
-            return cell && cell.completed;
-        });
+    checkLine(start, step, count) {
+        for (let i = 0; i < count; i++) {
+            const cell = this.board[start + i * step];
+            if (!cell?.completed) return false;
+        }
+        return true;
     }
 
     // 添加游戏完成处理方法
