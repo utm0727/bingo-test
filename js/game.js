@@ -395,7 +395,7 @@ class BingoGame {
                     const originalExt = file.name.split('.').pop().toLowerCase();
                     // 从MIME类型获取文件类型
                     const mimeExt = file.type.split('/')[1];
-                    // 使用MIME类型���扩展名，如果没有则使用原始扩展名
+                    // 使用MIME类型扩展名，如果没有则使用原始扩展名
                     const fileExt = mimeExt || originalExt;
                     
                     // 生成安全的文件名
@@ -443,42 +443,38 @@ class BingoGame {
             });
 
             // 更新格子状态
-            this.board[this.currentTaskIndex] = {
-                ...this.board[this.currentTaskIndex],
-                completed: true,
-                submission: submission
-            };
+            this.board[this.currentTaskIndex].completed = true;
+            this.board[this.currentTaskIndex].submission = submission;
 
-            try {
-                // 保存进度
-                await this.saveProgress();
-                console.log('任务提交成功，包含文件:', !!file);
+            // 保存进度
+            await this.saveProgress();
 
-                // 关闭对话框
-                this.closeTaskModal();
+            // 关闭任务模态框
+            this.closeTaskModal();
 
-                // 更新界面
-                this.updateUI();
+            // 检查是否达成 Bingo
+            if (this.checkBingo()) {
+                // 计算总用时
+                const totalTime = Date.now() - this.startTime;
+                this.isBingo = true;
 
-                // 检查是否完成 Bingo
-                if (this.checkBingo()) {
-                    this.isBingo = true;
-                    const totalTime = Date.now() - this.startTime + this.totalPlayTime;
+                // 显示 Bingo 提示
+                Swal.fire({
+                    title: 'BINGO!',
+                    text: 'Congratulations! You have completed a line!',
+                    icon: 'success',
+                    confirmButtonText: 'Continue Playing'
+                });
+
+                // 如果所有格子都完成，则触发游戏完成
+                if (this.board.every(cell => cell.completed)) {
                     await this.handleGameComplete(totalTime);
                 }
-            } catch (error) {
-                console.error('保存进度失败:', error);
-                // 回滚状态
-                this.board[this.currentTaskIndex] = {
-                    ...this.board[this.currentTaskIndex],
-                    completed: false,
-                    submission: undefined
-                };
-                throw error;
             }
+
         } catch (error) {
             console.error('提交任务失败:', error);
-            alert('提交失败：' + (error.message || '请重试'));
+            alert('提交失败，请重试');
         }
     }
 
