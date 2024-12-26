@@ -736,6 +736,59 @@ function initAPI() {
                     reader.onerror = error => reject(error);
                     reader.readAsDataURL(file);
                 });
+            },
+
+            // 在 API 对象中添加 uploadFile 方法
+            async uploadFile(file, fileName) {
+                try {
+                    // 检查文件大小
+                    if (file.size > 50 * 1024 * 1024) { // 50MB 限制
+                        throw new Error('File size cannot exceed 50MB');
+                    }
+
+                    // 检查文件类型
+                    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                        throw new Error('Only images and videos are supported');
+                    }
+
+                    // 生成安全的文件名
+                    const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+                    console.log('开始上传文件:', {
+                        originalName: file.name,
+                        safeFileName,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
+
+                    // 上传文件
+                    const { data, error } = await supabaseClient
+                        .storage
+                        .from('submissions')
+                        .upload(safeFileName, file, {
+                            contentType: file.type,
+                            upsert: true
+                        });
+
+                    if (error) throw error;
+
+                    // 获取文件的公共URL
+                    const { data: { publicUrl } } = supabaseClient
+                        .storage
+                        .from('submissions')
+                        .getPublicUrl(safeFileName);
+
+                    console.log('文件上传成功:', {
+                        originalName: file.name,
+                        savedAs: safeFileName,
+                        publicUrl
+                    });
+
+                    return publicUrl;
+                } catch (error) {
+                    console.error('文件上传失败:', error);
+                    throw error;
+                }
             }
         };
 

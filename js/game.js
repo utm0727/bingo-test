@@ -331,7 +331,7 @@ class BingoGame {
             const fileInput = document.getElementById('taskFile');
             const file = fileInput?.files[0];
 
-            // 检查是否至少有一项内容（文字说明或文件）
+            // 检查是否至少有一项内容
             if (!description && !file) {
                 alert('Please provide either a description or upload a file');
                 return;
@@ -346,32 +346,34 @@ class BingoGame {
             // 如果有文件，处理文件上传
             if (file) {
                 try {
-                    // 将文件转换为 Base64
-                    const base64File = await this.fileToBase64(file);
-                    submission.fileData = base64File;
-                    submission.fileType = file.type;
-                    submission.fileName = file.name;
+                    // 生成唯一的文件名
+                    const fileExt = file.name.split('.').pop();
+                    const uniqueFileName = `${this.currentUser.team_name}_${Date.now()}.${fileExt}`;
 
-                    console.log('File prepared for upload:', {
+                    // 上传文件
+                    const fileUrl = await window.API.uploadFile(file, uniqueFileName);
+                    submission.fileUrl = fileUrl;
+                    submission.fileName = file.name;
+                    submission.fileType = file.type;
+
+                    console.log('File uploaded successfully:', {
                         fileName: file.name,
-                        fileType: file.type,
-                        fileSize: file.size
+                        fileUrl: fileUrl
                     });
                 } catch (error) {
-                    console.error('File processing failed:', error);
-                    throw new Error('Failed to process file');
+                    console.error('File upload failed:', error);
+                    throw new Error('Failed to upload file');
                 }
             }
 
-            // 更新当前格子的状态
+            // 更新格子状态
             if (this.currentTaskIndex !== undefined && this.board[this.currentTaskIndex]) {
                 this.board[this.currentTaskIndex].completed = true;
                 this.board[this.currentTaskIndex].submission = submission;
 
                 // 保存进度
                 await this.saveProgress();
-                console.log('任务提交成功，包含文件:', !!file);
-
+                
                 // 更新界面
                 this.updateUI();
 
@@ -384,8 +386,6 @@ class BingoGame {
 
                 // 关闭对话框
                 this.closeTaskModal();
-            } else {
-                throw new Error('Invalid task index');
             }
         } catch (error) {
             console.error('提交任务失败:', error);
