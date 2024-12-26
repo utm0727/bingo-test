@@ -282,9 +282,11 @@ function initAPI() {
                     // 处理每个格子的提交内容
                     const processedBoard = await Promise.all(progressData.board.map(async (cell) => {
                         if (cell.submission) {
+                            // 创建基础提交对象，保留所有基本信息
                             const processedSubmission = {
                                 timestamp: cell.submission.timestamp,
-                                description: cell.submission.description || null
+                                description: cell.submission.description || null,  // 确保保存文字说明
+                                completed: cell.completed
                             };
 
                             // 如果有文件数据，上传到 Storage
@@ -313,12 +315,18 @@ function initAPI() {
                                         .from('submissions')
                                         .getPublicUrl(fileName);
 
+                                    // 保存文件相关信息
                                     processedSubmission.fileUrl = publicUrl;
                                     processedSubmission.fileName = cell.submission.fileName;
                                     processedSubmission.fileType = cell.submission.fileType;
                                 } catch (error) {
                                     console.error('文件上传失败:', error);
                                 }
+                            } else if (cell.submission.fileUrl) {
+                                // 如果已经有文件URL，保留现有的文件信息
+                                processedSubmission.fileUrl = cell.submission.fileUrl;
+                                processedSubmission.fileName = cell.submission.fileName;
+                                processedSubmission.fileType = cell.submission.fileType;
                             }
 
                             return {
@@ -343,7 +351,7 @@ function initAPI() {
                         });
 
                     if (error) throw error;
-                    console.log('游戏进度保存成功');
+                    console.log('游戏进度保存成功，包含处理后的数据:', processedBoard);
                     return true;
                 } catch (error) {
                     console.error('保存游戏进度失败:', error);

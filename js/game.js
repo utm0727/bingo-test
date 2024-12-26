@@ -114,69 +114,89 @@ class BingoGame {
 
     updateUI() {
         console.log('开始更新界面');
-        // 更新团队信息
-        const teamInfo = document.getElementById('teamInfo');
-        if (teamInfo) {
-            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
-        }
+        const board = document.getElementById('gameBoard');
+        if (!board) return;
 
-        // 更新游戏板
-        const gameBoard = document.getElementById('gameBoard');
-        if (!gameBoard) {
-            console.error('找不到游戏板元素');
-            return;
-        }
+        // 设置网格列数
+        board.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
+        board.innerHTML = '';
 
-        // 清空现有内容
-        gameBoard.innerHTML = '';
-
-        // 设置游戏板样式
-        gameBoard.style.display = 'grid';
-        gameBoard.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
-        gameBoard.style.gap = '1rem';
-        gameBoard.style.padding = '1rem';
-
-        // 渲染每个格子
         this.board.forEach((cell, index) => {
-            const cellDiv = document.createElement('div');
+            const cellElement = document.createElement('div');
+            cellElement.className = `bingo-cell ${cell.completed ? 'completed' : ''} ${cell.flipped ? 'flipped' : ''}`;
+
+            // 创建正面
+            const front = document.createElement('div');
+            front.className = 'cell-front';
+            front.textContent = index + 1;
+
+            // 创建背面
+            const back = document.createElement('div');
+            back.className = 'cell-back';
             
-            // 添加基础样式
-            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center text-center';
-            
-            // 根据状态添加额外样式
-            if (cell.completed) {
-                cellDiv.classList.add('bg-green-100', 'text-green-900');
-                let content = `
-                    <div class="text-sm mb-2">${cell.question}</div>
-                    <div class="text-xs mb-1">✓ 已完成</div>
-                    <div class="text-xs">${cell.submission.description}</div>
-                `;
-                if (cell.submission.filePath) {
-                    content += `<div class="text-xs mt-1">
-                        <a href="#" onclick="window.game.viewSubmission(${index})" class="text-indigo-600 hover:text-indigo-500">
-                            查看提交文件
-                        </a>
-                    </div>`;
+            // 添加题目内容
+            const question = document.createElement('div');
+            question.className = 'question-content';
+            question.textContent = cell.question;
+            back.appendChild(question);
+
+            // 如果已完成，添加提交内容预览和修改按钮
+            if (cell.completed && cell.submission) {
+                const submission = cell.submission;
+                const preview = document.createElement('div');
+                preview.className = 'mt-2 text-sm text-gray-600';
+                
+                // 添加文字说明预览
+                if (submission.description) {
+                    const description = document.createElement('p');
+                    description.className = 'mb-1';
+                    description.textContent = submission.description;
+                    preview.appendChild(description);
                 }
-                cellDiv.innerHTML = content;
-            } else if (cell.flipped) {
-                cellDiv.classList.add('bg-indigo-100', 'text-indigo-900');
-                cellDiv.textContent = cell.question;
-            } else {
-                cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
-                cellDiv.textContent = '点击查看题目';
+
+                // 添加文件预览
+                if (submission.fileUrl || submission.fileType) {
+                    const fileInfo = document.createElement('p');
+                    fileInfo.className = 'text-indigo-600 cursor-pointer hover:text-indigo-500';
+                    fileInfo.textContent = '查看提交文件';
+                    fileInfo.onclick = (e) => {
+                        e.stopPropagation();
+                        this.viewSubmission(index);
+                    };
+                    preview.appendChild(fileInfo);
+                }
+
+                // 如果游戏未完成，添加修改按钮
+                if (!this.isBingo) {
+                    const editButton = document.createElement('button');
+                    editButton.className = 'mt-2 text-sm text-blue-600 hover:text-blue-700';
+                    editButton.textContent = '修改提交';
+                    editButton.onclick = (e) => {
+                        e.stopPropagation();
+                        this.showTaskModal(index, true);
+                    };
+                    preview.appendChild(editButton);
+                }
+
+                back.appendChild(preview);
             }
 
-            // 添加点击事件
-            cellDiv.onclick = (e) => {
-                e.preventDefault();
-                if (!cell.completed && !this.isBingo) {
-                    this.handleCellClick(index);
-                }
-            };
+            cellElement.appendChild(front);
+            cellElement.appendChild(back);
 
-            gameBoard.appendChild(cellDiv);
+            // 只在未完成时添加点击事件
+            if (!cell.completed || !this.isBingo) {
+                cellElement.onclick = () => this.handleCellClick(index);
+            }
+
+            board.appendChild(cellElement);
         });
+
+        // 更新团队信息
+        const teamInfo = document.getElementById('teamInfo');
+        if (teamInfo && this.currentUser) {
+            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
+        }
 
         console.log('界面更新完成，当前游戏板状态:', this.board);
     }
