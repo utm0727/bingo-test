@@ -105,19 +105,32 @@
         // 更新排行榜
         async function updateLeaderboard() {
             try {
-                console.log('开始加载排行榜...');
-                const leaderboard = await window.API.getLeaderboard();
-                console.log('获取到的排行榜数据:', leaderboard);
-
                 const tbody = document.getElementById('leaderboardBody');
-                if (!tbody) {
-                    console.error('找不到排行榜表格体');
+                if (!tbody) return;
+
+                // 获取排行榜数据
+                const { data, error } = await window.supabaseClient
+                    .from('leaderboard')
+                    .select('*')
+                    .order('completion_time', { ascending: true });
+
+                if (error) {
+                    console.error('获取排行榜数据失败:', error);
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-red-500">
+                                加载失败，请刷新重试
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
 
+                // 清空现有数据
                 tbody.innerHTML = '';
 
-                if (!leaderboard || leaderboard.length === 0) {
+                // 检查是否有数据
+                if (!data || data.length === 0) {
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="4" class="px-6 py-4 text-center text-gray-500">
@@ -128,19 +141,12 @@
                     return;
                 }
 
-                // 按完成时间排序
-                const sortedLeaderboard = leaderboard.sort((a, b) => {
-                    return a.completion_time - b.completion_time;
-                });
-
-                sortedLeaderboard.forEach((entry, index) => {
-                    if (!entry || !entry.completion_time || !entry.team_name) return;
-
-                    // 将秒数转换为分钟和秒
+                // 显示数据
+                data.forEach((entry, index) => {
+                    // 计算完成用时
                     const minutes = Math.floor(entry.completion_time / 60);
                     const seconds = entry.completion_time % 60;
-                    const formattedTime = `${minutes}分${seconds}秒`;
-
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -150,10 +156,11 @@
                             ${entry.team_name}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${formattedTime}
+                            ${minutes}分${seconds}秒
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <button onclick="loadTeamDetails('${entry.team_name}')" class="text-indigo-600 hover:text-indigo-500">
+                            <button onclick="loadTeamDetails('${entry.team_name}')" 
+                                    class="text-indigo-600 hover:text-indigo-500">
                                 查看详情
                             </button>
                         </td>
@@ -162,25 +169,7 @@
                 });
             } catch (error) {
                 console.error('更新排行榜失败:', error);
-                const tbody = document.getElementById('leaderboardBody');
-                if (tbody) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-red-500">
-                                加载排行榜失败，请刷新重试
-                            </td>
-                        </tr>
-                    `;
-                }
             }
-        }
-
-        // 修改 startAutoRefresh 函数
-        function startAutoRefresh() {
-            // 每10秒更新一次排行榜
-            refreshInterval = setInterval(async () => {
-                await updateLeaderboard();
-            }, 10000);
         }
 
         // 修改 refreshData 函数
@@ -189,6 +178,14 @@
             if (currentTeam) {
                 await loadTeamData();
             }
+        }
+
+        // 修改 startAutoRefresh 函数
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(updateLeaderboard, 10000);
         }
 
         // 添加加载团队详情的方法
