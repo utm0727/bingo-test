@@ -286,12 +286,18 @@ function initAPI() {
                     // 处理每个格子的提交内容
                     const processedBoard = await Promise.all(progressData.board.map(async (cell) => {
                         if (cell.submission) {
+                            // 创建基础的提交信息
                             const processedSubmission = {
                                 timestamp: cell.submission.timestamp,
-                                description: cell.submission.description || null
+                                description: cell.submission.description || null,
+                                // 保留之前的文件信息
+                                fileUrl: cell.submission.fileUrl,
+                                fileName: cell.submission.fileName,
+                                storagePath: cell.submission.storagePath,
+                                fileType: cell.submission.fileType
                             };
 
-                            // 如果有文件数据，上传到 Storage
+                            // 如果有新的文件数据，上传到 Storage
                             if (cell.submission.file) {
                                 try {
                                     // 生成安全的文件名
@@ -329,6 +335,7 @@ function initAPI() {
                                         .from('submissions')
                                         .getPublicUrl(safeFileName);
 
+                                    // 更新文件信息
                                     processedSubmission.fileUrl = publicUrl;
                                     processedSubmission.fileName = originalName;
                                     processedSubmission.storagePath = safeFileName;
