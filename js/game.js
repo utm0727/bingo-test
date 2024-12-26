@@ -298,26 +298,24 @@ class BingoGame {
         const modal = document.getElementById('taskModal');
         if (modal) {
             modal.classList.add('hidden');
-            // 清理表单
+            // 重置表单
             const form = document.getElementById('taskForm');
             if (form) {
                 form.reset();
             }
+            // 隐藏文件预览
             const filePreview = document.getElementById('filePreview');
             if (filePreview) {
                 filePreview.classList.add('hidden');
             }
         }
-        this.currentTaskIndex = null;
     }
 
     async handleTaskSubmit() {
-        if (this.currentTaskIndex === null) return;
-
         try {
-            const description = document.getElementById('taskDescription').value.trim();
+            const description = document.getElementById('taskDescription')?.value.trim();
             const fileInput = document.getElementById('taskFile');
-            const file = fileInput.files[0];
+            const file = fileInput?.files[0];
 
             // 检查是否至少有一项内容（文字说明或文件）
             if (!description && !file) {
@@ -325,58 +323,45 @@ class BingoGame {
                 return;
             }
 
-            // 创建提交对象
+            // 准备提交数据
             const submission = {
-                timestamp: new Date().toISOString()
+                timestamp: Date.now(),
+                description: description || null
             };
-
-            // 如果有文字说明，添加到提交中
-            if (description) {
-                submission.description = description;
-            }
 
             // 如果有文件，处理文件上传
             if (file) {
                 try {
-                    // 添加文件大小检查
-                    if (file.size > 50 * 1024 * 1024) { // 50MB 限制
-                        throw new Error('File size cannot exceed 50MB');
-                    }
-
-                    // 检查文件类型
-                    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-                        throw new Error('Only images and videos are supported');
-                    }
+                    console.log('File prepared for upload:', {
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
 
                     // 将文件转换为 Base64
                     const base64File = await this.fileToBase64(file);
                     submission.fileData = base64File;
                     submission.fileType = file.type;
                     submission.fileName = file.name;
-
-                    console.log('File prepared for upload:', {
-                        fileName: file.name,
-                        fileType: file.type,
-                        fileSize: file.size
-                    });
                 } catch (error) {
                     console.error('File processing failed:', error);
-                    alert(error.message);
-                    return;
+                    throw new Error('Failed to process file');
                 }
             }
 
-            // 更新格子状态
-            this.board[this.currentTaskIndex].completed = true;
-            this.board[this.currentTaskIndex].submission = submission;
+            // 更新当前格子的状态
+            if (this.currentTaskIndex !== undefined && this.board[this.currentTaskIndex]) {
+                this.board[this.currentTaskIndex].completed = true;
+                this.board[this.currentTaskIndex].submission = submission;
 
-            try {
                 // 保存进度
-                await this.saveProgress();
-                console.log('任务提交成功，包含文件:', !!file);
-
-                // 关闭对话框
-                this.closeTaskModal();
+                try {
+                    await this.saveProgress();
+                    console.log('任务提交成功，包含文件:', !!file);
+                } catch (error) {
+                    console.error('保存进度失败:', error);
+                    throw new Error('Failed to save progress');
+                }
 
                 // 更新界面
                 this.updateUI();
@@ -387,16 +372,15 @@ class BingoGame {
                     const totalTime = Date.now() - this.startTime + this.totalPlayTime;
                     await this.handleGameComplete(totalTime);
                 }
-            } catch (error) {
-                console.error('保存进度失败:', error);
-                // 回滚状态
-                this.board[this.currentTaskIndex].completed = false;
-                delete this.board[this.currentTaskIndex].submission;
-                throw error;
+
+                // 关闭对话框
+                this.closeTaskModal();
+            } else {
+                throw new Error('Invalid task index');
             }
         } catch (error) {
             console.error('提交任务失败:', error);
-            alert('提交失败：' + (error.message || '请重试'));
+            alert('Failed to submit: ' + (error.message || 'Please try again'));
         }
     }
 
