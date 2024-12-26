@@ -243,9 +243,19 @@ class BingoGame {
             fileInput.value = '';
             
             // 如果有已提交的文件，显示文件名
-            if (submission.filePath) {
+            if (submission.fileUrl) {
                 filePreview.classList.remove('hidden');
                 fileName.textContent = submission.fileName || '已上传文件';
+                
+                // 添加当前文件预览
+                const currentFileInfo = document.createElement('div');
+                currentFileInfo.className = 'mt-2 text-sm text-gray-600';
+                currentFileInfo.innerHTML = `
+                    当前文件: <a href="${submission.fileUrl}" target="_blank" class="text-blue-500 hover:text-blue-600">
+                        ${submission.fileName}
+                    </a>
+                `;
+                filePreview.appendChild(currentFileInfo);
             } else {
                 filePreview.classList.add('hidden');
             }
