@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Completion - Bingo Game</title>
+    <title>游戏完成 - Bingo 游戏</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="../css/style.css" rel="stylesheet">
 </head>
@@ -11,27 +11,27 @@
     <div class="min-h-screen py-6 px-4">
         <div class="max-w-4xl mx-auto">
             <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">Game Completion Overview</h1>
+                <h1 class="text-3xl font-bold text-gray-900">游戏完成概览</h1>
                 <div class="flex gap-4">
                     <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
-                        View Leaderboard
+                        查看排行榜
                     </a>
                     <a href="../index.html" class="text-indigo-600 hover:text-indigo-500">
-                        Back to Home
+                        返回首页
                     </a>
                 </div>
             </div>
 
             <div class="bg-white shadow rounded-lg p-6 mb-6">
                 <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold text-green-600">Congratulations on completing the Bingo Game!</h2>
+                    <h2 class="text-2xl font-bold text-green-600">恭喜完成 Bingo 游戏！</h2>
                     <p class="text-gray-600 mt-2" id="teamInfo"></p>
                     <p class="text-gray-600" id="completionTime"></p>
                 </div>
             </div>
 
             <div id="gameBoard" class="grid grid-cols-5 gap-4">
-                <!-- Game cells will be dynamically generated -->
+                <!-- 游戏格子将通过 JavaScript 动态生成 -->
             </div>
         </div>
     </div>
@@ -41,16 +41,16 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const currentUser = JSON.parse(localStorage.getItem('currentUser'));
             if (!currentUser) {
-                alert('Please login first');
+                alert('请先登录');
                 window.location.href = '../index.html';
                 return;
             }
 
-            // Display team information
-            document.getElementById('teamInfo').textContent = `Team: ${currentUser.teamName}`;
+            // 显示团队信息
+            document.getElementById('teamInfo').textContent = `团队：${currentUser.teamName}`;
 
             try {
-                // Get completion record
+                // 获取完成记录
                 const leaderboard = await API.getLeaderboard();
                 const teamRecord = leaderboard.find(record => record.teamName === currentUser.teamName);
                 
@@ -58,10 +58,10 @@
                     const minutes = Math.floor(teamRecord.score / 60);
                     const seconds = teamRecord.score % 60;
                     document.getElementById('completionTime').textContent = 
-                        `Completion Time: ${minutes}m ${seconds}s`;
+                        `完成时间：${minutes}分${seconds}秒`;
                 }
 
-                // Get game progress to display final state
+                // 获取游戏进度显示最终状态
                 const progress = await API.getGameProgress(currentUser.teamName);
                 if (progress && progress.board) {
                     renderCompletedBoard(progress.board);
@@ -73,7 +73,7 @@
 
         function renderCompletedBoard(board) {
             if (!Array.isArray(board)) {
-                console.error('Invalid board data');
+                console.error('无效的棋盘数据');
                 return;
             }
 
@@ -81,19 +81,19 @@
             gameBoard.innerHTML = '';
             
             try {
-                // Find cells that form bingo
+                // 找出构成 bingo 的格子
                 const bingoLines = findBingoLines(board);
                 
-                // First render completed cells
+                // 先渲染已完成的格子
                 const completedCells = board.filter(cell => cell.completed);
                 
-                // Create completion overview title
+                // 创建完成概览标题
                 const titleDiv = document.createElement('div');
                 titleDiv.className = 'col-span-full mb-4 text-xl font-bold text-gray-800';
-                titleDiv.textContent = `Completed Tasks (${completedCells.length}/${board.length})`;
+                titleDiv.textContent = `已完成任务（${completedCells.length}/${board.length}）`;
                 gameBoard.appendChild(titleDiv);
 
-                // Render each completed cell
+                // 渲染每个已完成的格子
                 completedCells.forEach((cell, index) => {
                     const cellElement = document.createElement('div');
                     const isBingoCell = bingoLines.includes(board.indexOf(cell));
@@ -104,12 +104,12 @@
                     cellElement.innerHTML = `
                         ${isBingoCell ? '<div class="absolute top-2 right-2 text-green-500 font-bold">★</div>' : ''}
                         <div class="mb-3">
-                            <h3 class="text-sm font-medium text-gray-900">Task ${board.indexOf(cell) + 1}</h3>
-                            <p class="text-sm text-gray-600">${cell.question || 'Unknown Task'}</p>
+                            <h3 class="text-sm font-medium text-gray-900">题目 ${board.indexOf(cell) + 1}</h3>
+                            <p class="text-sm text-gray-600">${cell.question || '未知题目'}</p>
                         </div>
                         <div class="preview-container flex-grow flex items-center justify-center border-t pt-3">
                             <div class="w-full">
-                                <p class="text-xs text-gray-500 mb-2">Submission:</p>
+                                <p class="text-xs text-gray-500 mb-2">提交内容：</p>
                                 ${renderPreview(cell)}
                             </div>
                         </div>
@@ -118,30 +118,30 @@
                     gameBoard.appendChild(cellElement);
                 });
             } catch (error) {
-                console.error('Failed to render board:', error);
-                gameBoard.innerHTML = '<p class="text-red-500">Failed to load game data</p>';
+                console.error('渲染棋盘失败:', error);
+                gameBoard.innerHTML = '<p class="text-red-500">加载游戏数据失败</p>';
             }
         }
 
         function renderPreview(cell) {
-            if (!cell.preview) return '<span class="text-gray-500">Completed</span>';
+            if (!cell.preview) return '<span class="text-gray-500">已完成</span>';
 
             if (cell.fileType.startsWith('image/')) {
                 return `
                     <div class="flex flex-col items-center">
                         <img src="${cell.preview}" 
-                            class="max-w-full max-h-[200px] object-contain rounded cursor-pointer" 
-                            alt="Preview"
+                            class="max-w-full max-h-[150px] object-contain rounded cursor-pointer" 
+                            alt="预览"
                             onclick="showPreview('${cell.preview}', '${cell.fileType}')"
                         >
-                        <span class="text-xs text-gray-500 mt-1">Click to view full image</span>
+                        <span class="text-xs text-gray-500 mt-1">点击查看大图</span>
                     </div>
                 `;
             } else if (cell.fileType.startsWith('video/')) {
                 return `
                     <div class="flex flex-col items-center">
                         <div class="relative cursor-pointer w-full" onclick="showPreview('${cell.preview}', '${cell.fileType}')">
-                            <video class="max-w-full max-h-[200px] rounded mx-auto">
+                            <video class="max-w-full max-h-[150px] rounded mx-auto">
                                 <source src="${cell.preview}" type="${cell.fileType}">
                             </video>
                             <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-20">
@@ -151,7 +151,7 @@
                                 </svg>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-500 mt-1">Click to play video</span>
+                        <span class="text-xs text-gray-500 mt-1">点击播放视频</span>
                     </div>
                 `;
             } else if (cell.fileType.startsWith('text/')) {
@@ -162,10 +162,10 @@
                 `;
             }
             
-            return `<span class="text-gray-500">Completed</span>`;
+            return `<span class="text-gray-500">已完成</span>`;
         }
 
-        // Add preview modal functionality
+        // 添加预览弹窗功能
         function showPreview(preview, fileType) {
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
@@ -177,7 +177,7 @@
 
             if (fileType.startsWith('image/')) {
                 content.innerHTML = `
-                    <img src="${preview}" class="max-w-full max-h-[80vh] object-contain" alt="Preview">
+                    <img src="${preview}" class="max-w-full max-h-[80vh] object-contain" alt="预览">
                 `;
             } else if (fileType.startsWith('video/')) {
                 content.innerHTML = `
@@ -190,7 +190,7 @@
                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                            onclick="event.stopPropagation()"
                         >
-                            Download Video
+                            下载视频
                         </a>
                     </div>
                 `;
