@@ -143,13 +143,15 @@ class BingoGame {
         this.board.forEach((cell, index) => {
             const cellDiv = document.createElement('div');
             
-            // 添加基础样式 - 使用 aspect-ratio 确保正方形
-            cellDiv.className = 'relative aspect-square rounded shadow cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center p-4 overflow-hidden';
+            // 添加基础样式 - 使用固定尺寸的正方形
+            cellDiv.className = 'w-full relative rounded shadow cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center overflow-hidden';
+            cellDiv.style.aspectRatio = '1'; // 确保正方形
+            cellDiv.style.minHeight = '150px'; // 设置最小高度
             
             // 根据状态添加额外样式
             if (cell.completed) {
                 // 已完成的格子
-                cellDiv.classList.add('bg-green-100', 'text-green-900', 'hover:bg-green-200');
+                cellDiv.classList.add('bg-green-100', 'text-green-900', 'hover:bg-green-200', 'p-4');
                 let content = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm mb-2">${cell.question}</div>
@@ -167,7 +169,7 @@ class BingoGame {
                 cellDiv.innerHTML = content;
             } else if (cell.flipped) {
                 // 已翻开但未完成的格子
-                cellDiv.classList.add('bg-white', 'hover:bg-gray-50', 'border', 'border-gray-200');
+                cellDiv.classList.add('bg-white', 'hover:bg-gray-50', 'border', 'border-gray-200', 'p-4');
                 cellDiv.innerHTML = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>

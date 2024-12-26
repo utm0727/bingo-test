@@ -19,7 +19,22 @@ function initAPI() {
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo',
+            {
+                db: {
+                    schema: 'public'
+                },
+                auth: {
+                    persistSession: true
+                },
+                global: {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    }
+                }
+            }
         );
 
         // 定义为全局变量
@@ -223,13 +238,14 @@ function initAPI() {
                     // 从 leaderboard 表获取数据
                     const { data, error } = await supabaseClient
                         .from('leaderboard')
-                        .select('*')
-                        .order('completion_time', { ascending: true })
-                        .headers({
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        });
+                        .select('*', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            }
+                        })
+                        .order('completion_time', { ascending: true });
 
                     if (error) {
                         console.error('获取排行榜数据失败:', error);
