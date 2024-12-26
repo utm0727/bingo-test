@@ -106,13 +106,8 @@
         async function updateLeaderboard() {
             try {
                 console.log('开始加载排行榜...');
-                const { data: leaderboard, error } = await window.API.getTeamLeaderboard();
+                const leaderboard = await window.API.getLeaderboard();
                 console.log('获取到的排行榜数据:', leaderboard);
-
-                if (error) {
-                    console.error('获取排行榜数据失败:', error);
-                    return;
-                }
 
                 const tbody = document.getElementById('leaderboardBody');
                 if (!tbody) {
@@ -141,21 +136,11 @@
                 sortedLeaderboard.forEach((entry, index) => {
                     if (!entry || !entry.completion_time) return;
 
-                    // 将秒数转换为分钟和秒
-                    const minutes = Math.floor(entry.completion_time / 60);
-                    const seconds = entry.completion_time % 60;
+                    // 将毫秒转换为分钟和秒
+                    const totalSeconds = Math.floor(entry.completion_time / 1000);
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = totalSeconds % 60;
                     const formattedTime = `${minutes}分${seconds}秒`;
-
-                    // 获取创建时间
-                    const createdAt = new Date(entry.created_at);
-                    const submitTime = createdAt.toLocaleString('zh-CN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
