@@ -755,6 +755,29 @@ function initAPI() {
                     console.error('删除文件失败:', error);
                     throw error;
                 }
+            },
+
+            // 添加获取团队排行榜数据的方法
+            async getTeamLeaderboard(teamName) {
+                try {
+                    console.log('获取团队排行榜数据:', teamName);
+                    
+                    const { data, error } = await supabaseClient
+                        .from('leaderboard')
+                        .select('*')
+                        .eq('team_name', teamName)
+                        .single();
+
+                    if (error) {
+                        console.error('获取团队排行榜数据失败:', error);
+                        return { data: null, error };
+                    }
+
+                    return { data, error: null };
+                } catch (error) {
+                    console.error('获取团队排行榜数据失败:', error);
+                    return { data: null, error };
+                }
             }
         };
 
