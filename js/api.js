@@ -699,9 +699,11 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 设置正确的Content-Type
+                    // 设置上传选项
                     const options = {
-                        contentType: file.type
+                        cacheControl: '3600',
+                        contentType: file.type,
+                        upsert: true
                     };
 
                     // 上传文件
@@ -715,20 +717,19 @@ function initAPI() {
                         throw uploadError;
                     }
 
-                    // 获取文件的公共URL，并添加下载参数
+                    // 获取文件的公共URL
                     const { data: { publicUrl } } = supabaseClient
                         .storage
                         .from('submissions')
-                        .getPublicUrl(fileName, {
-                            download: true,
-                            transform: {
-                                disposition: 'attachment'
-                            }
-                        });
+                        .getPublicUrl(fileName);
 
+                    // 返回完整的文件信息
                     return {
                         fileUrl: publicUrl,
-                        storagePath: fileName
+                        storagePath: fileName,
+                        fileName: file.name,
+                        fileType: file.type,
+                        originalExt: file.name.split('.').pop()
                     };
                 } catch (error) {
                     console.error('文件上传失败:', error);
