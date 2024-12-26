@@ -696,18 +696,23 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 确保文件类型正确
-                    const contentType = file.type || 'application/octet-stream';
-                    console.log('使用的Content-Type:', contentType);
+                    // 使用 FormData 处理文件上传
+                    const formData = new FormData();
+                    formData.append('file', file);
 
                     // 上传文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
                         .upload(fileName, file, {
-                            contentType: contentType,
+                            contentType: file.type,
                             cacheControl: '3600',
-                            upsert: true
+                            upsert: true,
+                            duplex: 'half',
+                            headers: {
+                                'x-upsert': 'true',
+                                'Content-Type': file.type
+                            }
                         });
 
                     if (uploadError) {
@@ -724,7 +729,7 @@ function initAPI() {
                     console.log('文件上传成功:', {
                         fileName,
                         publicUrl,
-                        contentType
+                        contentType: file.type
                     });
 
                     return {
