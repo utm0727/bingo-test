@@ -211,6 +211,10 @@ class BingoGame {
 
     showTaskModal(index, isEdit = false) {
         console.log('显示任务提交对话框', { index, isEdit });
+
+        // 确保关闭任何已打开的 SweetAlert2 对话框
+        Swal.close();
+
         const modal = document.getElementById('taskModal');
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
@@ -229,7 +233,7 @@ class BingoGame {
         // 显示题目
         question.textContent = this.board[index].question;
 
-        // 如果是编辑模式，填充已有内容
+        // 如果编辑模式，填充已有内容
         if (isEdit && this.board[index].submission) {
             const submission = this.board[index].submission;
             description.value = submission.description || '';
@@ -558,7 +562,7 @@ class BingoGame {
         if (!this.isBingo) {
             content += `
                 <div class="mt-4 text-right">
-                    <button onclick="window.game.showTaskModal(${index}, true)" 
+                    <button onclick="Swal.close(); window.game.showTaskModal(${index}, true)" 
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         编辑提交
                     </button>
