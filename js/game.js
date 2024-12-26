@@ -161,7 +161,6 @@ class BingoGame {
                 // 已完成的格子
                 cellDiv.classList.add('bg-green-100', 'text-green-900', 'hover:bg-green-200', 'p-4');
                 let content = `
-                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
                     <div class="text-sm mb-2">${cell.question}</div>
                     <div class="text-xs text-green-700 mb-2">Completed</div>`;
                 
@@ -178,7 +177,6 @@ class BingoGame {
                 // 已翻开但未完成的格子
                 cellDiv.classList.add('bg-white', 'hover:bg-gray-50', 'border', 'border-gray-200', 'p-4');
                 cellDiv.innerHTML = `
-                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
                     <button onclick="window.game.showTaskModal(${index})" 
                             class="mt-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
@@ -195,7 +193,6 @@ class BingoGame {
                 // 游戏已完成，显示所有题目
                 cellDiv.classList.add('bg-gray-100', 'text-gray-700', 'p-4');
                 cellDiv.innerHTML = `
-                    <div class="text-lg font-medium mb-2">Task ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
                 `;
             }
@@ -394,10 +391,10 @@ class BingoGame {
                         fileSize: file.size
                     });
 
-                    // 生成安全的文件名
+                    // 生成安全的文件名，保留原始扩展名
                     const timestamp = Date.now();
-                    const fileExt = file.name.split('.').pop().toLowerCase();
-                    const safeFileName = `${this.currentUser.team_name}_${timestamp}.${fileExt}`;
+                    const originalExt = file.name.split('.').pop().toLowerCase();
+                    const safeFileName = `${this.currentUser.team_name}_${timestamp}.${originalExt}`;
 
                     // 如果是编辑模式且有旧文件，先删除旧文件
                     const oldSubmission = this.board[this.currentTaskIndex].submission;
@@ -410,20 +407,22 @@ class BingoGame {
                         }
                     }
 
-                    // 上传新文件
+                    // 上传新文件，确保传递正确的文件类型
                     const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
                     
-                    // 更新提交对象
+                    // 更新提交对象，确保保存原始文件类型
                     submission.fileUrl = fileUrl;
                     submission.fileName = file.name;
                     submission.storagePath = storagePath;
                     submission.fileType = file.type;
+                    submission.originalExt = originalExt;
 
                     console.log('文件已上传:', {
                         fileUrl,
                         fileName: file.name,
                         storagePath,
-                        fileType: file.type
+                        fileType: file.type,
+                        originalExt
                     });
                 } catch (error) {
                     console.error('文件处理失败:', error);

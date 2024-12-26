@@ -702,10 +702,8 @@ function initAPI() {
                         .from('submissions')
                         .upload(fileName, file, {
                             contentType: file.type,
-                            duplex: 'half',
-                            headers: {
-                                'x-upsert': 'true'
-                            }
+                            cacheControl: '3600',
+                            upsert: true
                         });
 
                     if (uploadError) {
@@ -721,7 +719,8 @@ function initAPI() {
 
                     console.log('文件上传成功:', {
                         fileName,
-                        publicUrl
+                        publicUrl,
+                        contentType: file.type
                     });
 
                     return {
