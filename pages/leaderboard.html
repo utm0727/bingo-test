@@ -113,7 +113,10 @@
                             ${index + 1}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            ${entry.team_name}
+                            <a href="completion.html?team=${encodeURIComponent(entry.team_name)}" 
+                               class="text-indigo-600 hover:text-indigo-900">
+                                ${entry.team_name}
+                            </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             ${minutes}分${seconds}秒
