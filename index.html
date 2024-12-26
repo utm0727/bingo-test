@@ -7,41 +7,44 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
+    <div class="min-h-screen flex items-center justify-center py-8 sm:py-12 md:py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-sm sm:max-w-md md:max-w-lg w-full space-y-6 sm:space-y-8">
             <div>
-                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                <h2 class="text-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
                     Team Login
                 </h2>
             </div>
-            <form id="loginForm" class="mt-8 space-y-6">
-                <div>
-                    <label for="teamName" class="block text-sm font-medium text-gray-700">
-                        Team Name
-                    </label>
-                    <input id="teamName" name="teamName" type="text" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <form id="loginForm" class="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div class="mb-4 sm:mb-6">
+                        <label for="teamName" class="block text-sm sm:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                            Team Name
+                        </label>
+                        <input id="teamName" name="teamName" type="text" required
+                            class="appearance-none relative block w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-md text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10">
+                    </div>
+                    <div class="mb-4 sm:mb-6">
+                        <label for="leaderName" class="block text-sm sm:text-base font-medium text-gray-700 mb-1 sm:mb-2">
+                            Team Leader Name
+                        </label>
+                        <input id="leaderName" name="leaderName" type="text" required
+                            class="appearance-none relative block w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-md text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10">
+                    </div>
                 </div>
-                <div>
-                    <label for="leaderName" class="block text-sm font-medium text-gray-700">
-                        Team Leader Name
-                    </label>
-                    <input id="leaderName" name="leaderName" type="text" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                </div>
+
                 <div>
                     <button type="submit"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        class="group relative w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
                         Start Game
                     </button>
                 </div>
             </form>
             
-            <div class="flex justify-center space-x-4">
-                <a href="pages/leaderboard.html" class="text-indigo-600 hover:text-indigo-500">
+            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8">
+                <a href="pages/leaderboard.html" class="text-center text-sm sm:text-base text-indigo-600 hover:text-indigo-500 transition-colors duration-200">
                     View Leaderboard
                 </a>
-                <a href="pages/admin.html" class="text-indigo-600 hover:text-indigo-500">
+                <a href="pages/admin.html" class="text-center text-sm sm:text-base text-indigo-600 hover:text-indigo-500 transition-colors duration-200">
                     Admin Login
                 </a>
             </div>
@@ -50,37 +53,15 @@
 
     <!-- Load Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Debug code -->
-    <script>
-        console.log('Checking if Supabase is loaded:', {
-            supabase: window.supabase,
-            hasCreateClient: window.supabase?.createClient
-        });
-    </script>
-
-    <!-- Load API -->
     <script src="js/api.js"></script>
-
-    <!-- Debug code -->
-    <script>
-        console.log('Checking if API is loaded:', {
-            API: window.API,
-            hasLogin: window.API?.login
-        });
-    </script>
-
-    <!-- Load auth script -->
     <script src="js/auth.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Get team info from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const teamName = urlParams.get('team');
             const leaderName = urlParams.get('leader');
 
-            // Auto-fill form if team info exists
             if (teamName) {
                 document.getElementById('teamName').value = decodeURIComponent(teamName);
             }
@@ -88,9 +69,8 @@
                 document.getElementById('leaderName').value = decodeURIComponent(leaderName);
             }
 
-            // Auto-click start game if both fields have values
             if (teamName && leaderName) {
-                document.getElementById('startGameBtn').click();
+                document.querySelector('button[type="submit"]').click();
             }
         });
     </script>
