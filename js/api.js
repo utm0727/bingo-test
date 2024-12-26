@@ -699,12 +699,33 @@ function initAPI() {
                         fileSize: file.size
                     });
 
+                    // 确保文件类型正确
+                    if (!file.type) {
+                        console.warn('文件类型未定义，尝试从文件名推断');
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        switch (ext) {
+                            case 'mp4':
+                                file = new File([file], file.name, { type: 'video/mp4' });
+                                break;
+                            case 'jpg':
+                            case 'jpeg':
+                                file = new File([file], file.name, { type: 'image/jpeg' });
+                                break;
+                            case 'png':
+                                file = new File([file], file.name, { type: 'image/png' });
+                                break;
+                            // 添加更多类型处理
+                        }
+                    }
+
                     // 设置上传选项
                     const options = {
                         cacheControl: '3600',
-                        contentType: file.type,
+                        contentType: file.type || 'application/octet-stream',
                         upsert: true
                     };
+
+                    console.log('上传选项:', options);
 
                     // 上传文件
                     const { data, error: uploadError } = await supabaseClient
@@ -718,10 +739,25 @@ function initAPI() {
                     }
 
                     // 获取文件的公共URL
-                    const { data: { publicUrl } } = supabaseClient
+                    const { data: urlData } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .getPublicUrl(fileName);
+                        .createSignedUrl(fileName, 3600, {
+                            download: false,
+                            transform: {
+                                width: 0,
+                                height: 0,
+                                quality: 100
+                            }
+                        });
+
+                    const publicUrl = urlData?.signedUrl || null;
+
+                    if (!publicUrl) {
+                        throw new Error('无法获取文件URL');
+                    }
+
+                    console.log('文件上传成功，URL:', publicUrl);
 
                     // 返回完整的文件信息
                     return {
