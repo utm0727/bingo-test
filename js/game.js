@@ -180,8 +180,7 @@ class BingoGame {
                 // 未翻开的格子
                 cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600', 'transform', 'hover:scale-105', 'transition-transform');
                 cellDiv.innerHTML = `
-                    <div class="text-2xl font-bold mb-2">${index + 1}</div>
-                    <div class="text-sm">点击翻开</div>
+                    <div class="text-sm opacity-70">click</div>
                 `;
             }
 
@@ -214,8 +213,23 @@ class BingoGame {
             return;
         }
 
-        // 如果还没翻开，翻开并显示提交对话框
+        // 如果还没翻开，先关闭其他已翻开但未完成的格子
         if (!this.board[index].flipped) {
+            // 找到所有已翻开但未完成的格子
+            const flippedCells = this.board.filter((cell, i) => 
+                cell.flipped && !cell.completed && i !== index
+            );
+
+            // 如果有其他已翻开的格子，先关闭它们
+            if (flippedCells.length > 0) {
+                this.board.forEach((cell, i) => {
+                    if (cell.flipped && !cell.completed && i !== index) {
+                        cell.flipped = false;
+                    }
+                });
+            }
+
+            // 翻开当前格子
             this.board[index].flipped = true;
             await this.saveProgress();  // 保存翻开状态
             this.updateUI();
