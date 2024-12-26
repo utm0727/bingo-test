@@ -64,5 +64,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 从 URL 参数获取团队信息
+            const urlParams = new URLSearchParams(window.location.search);
+            const teamName = urlParams.get('team');
+            const leaderName = urlParams.get('leader');
+
+            // 如果存在团队信息，自动填充表单
+            if (teamName) {
+                document.getElementById('teamName').value = decodeURIComponent(teamName);
+            }
+            if (leaderName) {
+                document.getElementById('leaderName').value = decodeURIComponent(leaderName);
+            }
+        });
+    </script>
 </body>
 </html> 
