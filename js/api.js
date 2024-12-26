@@ -19,7 +19,13 @@ function initAPI() {
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo',
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
         );
 
         // 定义为全局变量
@@ -290,7 +296,7 @@ function initAPI() {
                             // 如果有文件数据，上传到 Storage
                             if (cell.submission.fileData) {
                                 try {
-                                    const fileName = `${teamName}/${Date.now()}-${cell.submission.fileName}`;
+                                    const fileName = `${teamName}/${Date.now()}-${encodeURIComponent(cell.submission.fileName).replace(/%20/g, '_')}`;
                                     
                                     // 从 base64 转换为 Blob
                                     const base64Data = cell.submission.fileData.split(',')[1];
