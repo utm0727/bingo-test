@@ -1,5 +1,5 @@
 // 创建一个初始化函数
-function initAPI() {
+async function initAPI() {
     // 检查 Supabase 是否已加载
     if (typeof window.supabase === 'undefined') {
         console.log('等待 Supabase 加载...', {
@@ -19,25 +19,7 @@ function initAPI() {
         // 初始化 Supabase 客户端
         const supabaseClient = window.supabase.createClient(
             'https://vwkkwthrkqyjmirsgqoo.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo',
-            {
-                db: {
-                    schema: 'public'
-                },
-                auth: {
-                    persistSession: true
-                },
-                global: {
-                    headers: {
-                        'Accept': '*/*',
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation'
-                    }
-                },
-                storage: {
-                    multipart: true
-                }
-            }
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2t3dGhya3F5am1pcnNncW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwOTc2OTcsImV4cCI6MjA1MDY3MzY5N30.YV3HewlxV2MYe4G30vEhh-06npmXQ1_c7C4E_BIHCEo'
         );
 
         // 定义为全局变量
@@ -634,7 +616,7 @@ function initAPI() {
                 }
             },
 
-            // 在 API 对象中添加初始化存储桶的方法
+            // 在 API 对象中添��初始化存储桶的方法
             async initStorage() {
                 try {
                     // 检查存储桶是否存在
@@ -654,18 +636,21 @@ function initAPI() {
                         const { error: createError } = await supabaseClient
                             .storage
                             .createBucket('submissions', {
-                                public: true,  // 修改为公开
-                                allowedMimeTypes: ['image/*', 'video/*']
+                                public: true,
+                                allowedMimeTypes: ['image/*', 'video/*', 'application/octet-stream'],
+                                fileSizeLimit: 52428800  // 50MB
                             });
 
                         if (createError) throw createError;
                         console.log('存储桶创建成功');
                     } else {
-                        // 如果存储桶已存在，更新为公开
+                        // 如果存储桶已存在，更新设置
                         const { error: updateError } = await supabaseClient
                             .storage
                             .updateBucket('submissions', {
-                                public: true
+                                public: true,
+                                allowedMimeTypes: ['image/*', 'video/*', 'application/octet-stream'],
+                                fileSizeLimit: 52428800  // 50MB
                             });
 
                         if (updateError) {
@@ -714,7 +699,6 @@ function initAPI() {
                             case 'png':
                                 file = new File([file], file.name, { type: 'image/png' });
                                 break;
-                            // 添加更多类型处理
                         }
                     }
 
@@ -739,29 +723,20 @@ function initAPI() {
                     }
 
                     // 获取文件的公共URL
-                    const { data: urlData } = await supabaseClient
+                    const { data: { publicUrl } } = supabaseClient
                         .storage
                         .from('submissions')
-                        .createSignedUrl(fileName, 3600, {
-                            download: false,
-                            transform: {
-                                width: 0,
-                                height: 0,
-                                quality: 100
-                            }
-                        });
+                        .getPublicUrl(fileName);
 
-                    const publicUrl = urlData?.signedUrl || null;
+                    // 构建正确的URL，确保包含正确的Content-Type
+                    const finalUrl = new URL(publicUrl);
+                    finalUrl.searchParams.append('content-type', file.type);
 
-                    if (!publicUrl) {
-                        throw new Error('无法获取文件URL');
-                    }
-
-                    console.log('文件上传成功，URL:', publicUrl);
+                    console.log('文件上传成功，URL:', finalUrl.toString());
 
                     // 返回完整的文件信息
                     return {
-                        fileUrl: publicUrl,
+                        fileUrl: finalUrl.toString(),
                         storagePath: fileName,
                         fileName: file.name,
                         fileType: file.type,
@@ -819,6 +794,9 @@ function initAPI() {
                 }
             }
         };
+
+        // 初始化存储桶
+        await window.API.initStorage();
 
         console.log('API 初始化完成');
         // 触发一个事件表示 API 已经准备好
