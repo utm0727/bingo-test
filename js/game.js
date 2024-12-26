@@ -183,68 +183,83 @@ class BingoGame {
 
     async handleCellClick(index) {
         console.log('格子点击:', index, '当前格子状态:', this.board[index]);
-        if (this.isBingo || !this.board[index] || this.board[index].completed) {
+        
+        // 如果游戏已完成，不允许任何修改
+        if (this.isBingo) {
             return;
         }
 
-        // 如果还没翻开，翻开并立即显示提交对话框
+        if (!this.board[index]) return;
+
+        // 如果已完成但游戏未结束，允许修改
+        if (this.board[index].completed) {
+            this.showTaskModal(index, true); // 传入 true 表示是修改模式
+            return;
+        }
+
+        // 如果还没翻开，翻开并显示提交对话框
         if (!this.board[index].flipped) {
             this.board[index].flipped = true;
             await this.saveProgress();  // 保存翻开状态
             this.updateUI();
-            // 立即显示任务提交对话框
             setTimeout(() => this.showTaskModal(index), 100);
             return;
         }
 
-        // 如果已经翻开，再次点击也显示任务提交对话框
+        // 如果已经翻开但未完成，显示提交对话框
         this.showTaskModal(index);
     }
 
-    showTaskModal(index) {
-        console.log('显示任务提交对话框');
+    showTaskModal(index, isEdit = false) {
+        console.log('显示任务提交对话框', { index, isEdit });
         const modal = document.getElementById('taskModal');
         const question = document.getElementById('taskQuestion');
         const form = document.getElementById('taskForm');
+        const description = document.getElementById('taskDescription');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
         
         if (!modal || !question || !form) {
-            console.error('找不到必要的DOM元素:', {
-                modal: !!modal,
-                question: !!question,
-                form: !!form,
-                modalId: modal?.id,
-                questionId: question?.id,
-                formId: form?.id
-            });
+            console.error('找不到必要的DOM元素');
             return;
         }
+
+        // 设置当前任务索引
+        this.currentTaskIndex = index;
 
         // 显示题目
         question.textContent = this.board[index].question;
 
-        // 重置表单
-        form.reset();
-        const filePreview = document.getElementById('filePreview');
-        if (filePreview) {
+        // 如果是编辑模式，填充已有内容
+        if (isEdit && this.board[index].submission) {
+            const submission = this.board[index].submission;
+            description.value = submission.description || '';
+            
+            // 清除文件输入
+            const fileInput = document.getElementById('taskFile');
+            fileInput.value = '';
+            
+            // 如果有已提交的文件，显示文件名
+            if (submission.filePath) {
+                filePreview.classList.remove('hidden');
+                fileName.textContent = submission.fileName || '已上传文件';
+            } else {
+                filePreview.classList.add('hidden');
+            }
+        } else {
+            // 新提交时清空表单
+            form.reset();
             filePreview.classList.add('hidden');
         }
 
-        // 保存当前操作的格子索引
-        this.currentTaskIndex = index;
+        // 显示对话框
+        modal.classList.remove('hidden');
 
         // 绑定提交事件
         form.onsubmit = async (e) => {
             e.preventDefault();
             await this.handleTaskSubmit();
         };
-
-        // 显示对话框
-        modal.classList.remove('hidden');
-        console.log('任务提交对话框已显示:', {
-            question: this.board[index].question,
-            index,
-            modalVisible: !modal.classList.contains('hidden')
-        });
     }
 
     closeTaskModal() {
@@ -272,16 +287,21 @@ class BingoGame {
             const fileInput = document.getElementById('taskFile');
             const file = fileInput.files[0];
 
-            if (!description.trim()) {
-                alert('请填写任务完成说明');
+            // 检查是否至少有一项内容（文字说明或文件）
+            if (!description.trim() && !file) {
+                alert('请填写任务完成说明或上传文件');
                 return;
             }
 
-            // 保存任务提交
+            // 创建提交对象
             const submission = {
-                description: description.trim(),
                 timestamp: new Date().toISOString()
             };
+
+            // 如果有文字说明，添加到提交中
+            if (description.trim()) {
+                submission.description = description.trim();
+            }
 
             // 如果有文件，添加到提交中
             if (file) {
@@ -300,9 +320,8 @@ class BingoGame {
                     submission.fileType = file.type;
                 } catch (error) {
                     console.error('文件处理失败:', error);
-                    if (!confirm(error.message + '\n是否继续提交文字说明？')) {
-                        return;
-                    }
+                    alert(error.message);
+                    return;
                 }
             }
 
