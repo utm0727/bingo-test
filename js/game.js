@@ -325,16 +325,15 @@ class BingoGame {
                         fileSize: file.size
                     });
 
-                    // 将文件转换为 Base64
-                    const base64File = await this.fileToBase64(file);
-                    submission.fileData = base64File;
+                    // 直接使用文件对象
+                    submission.file = file;
                     submission.fileType = file.type;
                     submission.fileName = file.name;
 
-                    console.log('文件已转换为 Base64:', {
+                    console.log('文件已准备好上传:', {
                         fileName: file.name,
                         fileType: file.type,
-                        base64Length: base64File.length
+                        fileSize: file.size
                     });
                 } catch (error) {
                     console.error('文件处理失败:', error);
