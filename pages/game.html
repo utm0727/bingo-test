@@ -10,10 +10,10 @@
     <div class="min-h-screen py-6 px-4">
         <div class="max-w-4xl mx-auto">
             <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-900">Bingo 游戏</h1>
+                <h1 class="text-3xl font-bold text-gray-900">Bingo Game</h1>
                 <div class="flex gap-4 items-center">
                     <span id="teamInfo" class="text-gray-600"></span>
-                    <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">查看排行榜</a>
+                    <a href="leaderboard.html" class="text-indigo-600 hover:text-indigo-500">View Leaderboard</a>
                 </div>
             </div>
 
@@ -27,7 +27,7 @@
     <div id="taskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg w-full max-w-lg">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">提交任务</h2>
+                <h2 class="text-2xl font-bold">Submit Task</h2>
                 <button onclick="window.game.closeTaskModal()" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -36,24 +36,24 @@
             </div>
 
             <div class="mb-4">
-                <h3 class="font-medium text-gray-900 mb-2">任务内容：</h3>
+                <h3 class="font-medium text-gray-900 mb-2">Task Content:</h3>
                 <p id="taskQuestion" class="text-gray-700"></p>
             </div>
 
             <form id="taskForm" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        任务完成说明（选填）
+                        Task Description (Optional)
                     </label>
                     <textarea id="taskDescription"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                         rows="3"
-                        placeholder="请描述如何完成这个任务..."></textarea>
+                        placeholder="Describe how you completed this task..."></textarea>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        上传证明（选填）
+                        Upload Proof (Optional)
                     </label>
                     <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                         <div class="space-y-1 text-center">
@@ -62,27 +62,27 @@
                             </svg>
                             <div class="flex text-sm text-gray-600">
                                 <label for="taskFile" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                    <span>上传文件</span>
+                                    <span>Upload file</span>
                                     <input id="taskFile" type="file" class="sr-only" accept="image/*,video/*">
                                 </label>
-                                <p class="pl-1">或拖放文件</p>
+                                <p class="pl-1">or drag and drop</p>
                             </div>
-                            <p class="text-xs text-gray-500">支持图片或视频</p>
+                            <p class="text-xs text-gray-500">Images or videos only</p>
                         </div>
                     </div>
                     <div id="filePreview" class="mt-2 hidden">
-                        <p class="text-sm text-gray-500">已选择：<span id="fileName"></span></p>
+                        <p class="text-sm text-gray-500">Selected: <span id="fileName"></span></p>
                     </div>
                 </div>
 
                 <div class="flex justify-end space-x-3 mt-6">
                     <button type="button" onclick="window.game.closeTaskModal()"
                         class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        取消
+                        Cancel
                     </button>
                     <button type="submit"
                         class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        提交任务
+                        Submit
                     </button>
                 </div>
             </form>

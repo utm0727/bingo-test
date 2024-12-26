@@ -158,7 +158,7 @@ class BingoGame {
                 if (submission.fileUrl || submission.fileType) {
                     const fileInfo = document.createElement('p');
                     fileInfo.className = 'text-indigo-600 cursor-pointer hover:text-indigo-500';
-                    fileInfo.textContent = '查看提交文件';
+                    fileInfo.textContent = 'View Submission';
                     fileInfo.onclick = (e) => {
                         e.stopPropagation();
                         this.viewSubmission(index);
@@ -170,7 +170,7 @@ class BingoGame {
                 if (!this.isBingo) {
                     const editButton = document.createElement('button');
                     editButton.className = 'mt-2 text-sm text-blue-600 hover:text-blue-700';
-                    editButton.textContent = '修改提交';
+                    editButton.textContent = 'Edit Submission';
                     editButton.onclick = (e) => {
                         e.stopPropagation();
                         this.showTaskModal(index, true);
@@ -195,7 +195,7 @@ class BingoGame {
         // 更新团队信息
         const teamInfo = document.getElementById('teamInfo');
         if (teamInfo && this.currentUser) {
-            teamInfo.textContent = `团队：${this.currentUser.team_name}`;
+            teamInfo.textContent = `Team: ${this.currentUser.team_name}`;
         }
 
         console.log('界面更新完成，当前游戏板状态:', this.board);

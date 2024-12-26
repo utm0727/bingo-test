@@ -8,8 +8,8 @@
     transform-style: preserve-3d;
     position: relative;
     width: 100%;
-    aspect-ratio: 1;
-    min-height: auto;
+    padding-bottom: 100%;
+    min-height: unset;
 }
 
 .bingo-cell.flipped .cell-front {
@@ -36,6 +36,7 @@
     flex-direction: column;
     padding: 1rem;
     background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .cell-front {
@@ -52,7 +53,6 @@
     border: 2px solid #e5e7eb;
     overflow-y: auto;
     z-index: 1;
-    max-height: 100%;
 }
 
 .bingo-cell.completed {
@@ -71,9 +71,6 @@
 
 .question-content {
     backface-visibility: hidden;
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 0.5rem;
 }
 
 .transform {
