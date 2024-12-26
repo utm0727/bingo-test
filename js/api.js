@@ -290,17 +290,27 @@ function initAPI() {
                             // 如果有文件数据，上传到 Storage
                             if (cell.submission.fileData) {
                                 try {
-                                    const fileName = `${teamName}/${Date.now()}-${cell.submission.fileName}`;
+                                    // 生成安全的文件名
+                                    const fileExt = cell.submission.fileName.split('.').pop();
+                                    const safeFileName = `${teamName}_${cell.id}_${Date.now()}.${fileExt}`
+                                        .replace(/[^a-zA-Z0-9._-]/g, '_');
                                     
+                                    console.log('开始上传文件:', {
+                                        fileName: safeFileName,
+                                        fileType: cell.submission.fileType,
+                                        fileSize: cell.submission.fileData.length
+                                    });
+
                                     // 从 base64 转换为 Blob
                                     const base64Data = cell.submission.fileData.split(',')[1];
-                                    const blob = await fetch(`data:${cell.submission.fileType};base64,${base64Data}`).then(r => r.blob());
+                                    const blob = await fetch(`data:${cell.submission.fileType};base64,${base64Data}`)
+                                        .then(r => r.blob());
                                     
                                     // 上传文件
                                     const { data, error: uploadError } = await supabaseClient
                                         .storage
                                         .from('submissions')
-                                        .upload(fileName, blob, {
+                                        .upload(safeFileName, blob, {
                                             contentType: cell.submission.fileType,
                                             upsert: true
                                         });
@@ -311,13 +321,21 @@ function initAPI() {
                                     const { data: { publicUrl } } = supabaseClient
                                         .storage
                                         .from('submissions')
-                                        .getPublicUrl(fileName);
+                                        .getPublicUrl(safeFileName);
 
                                     processedSubmission.fileUrl = publicUrl;
                                     processedSubmission.fileName = cell.submission.fileName;
                                     processedSubmission.fileType = cell.submission.fileType;
+
+                                    console.log('文件上传成功:', {
+                                        originalName: cell.submission.fileName,
+                                        savedAs: safeFileName,
+                                        publicUrl
+                                    });
                                 } catch (error) {
                                     console.error('文件上传失败:', error);
+                                    // 继续处理，但记录错误
+                                    processedSubmission.uploadError = error.message;
                                 }
                             }
 
