@@ -322,13 +322,14 @@ class BingoGame {
                     console.log('处理文件上传:', {
                         fileName: file.name,
                         fileType: file.type,
-                        fileSize: file.size
+                        fileSize: file.size,
+                        file: file
                     });
 
-                    // 直接使用文件对象
+                    // 保存文件对象和相关信息
                     submission.file = file;
-                    submission.fileType = file.type;
                     submission.fileName = file.name;
+                    // 不需要单独存储 fileType，因为它包含在 file 对象中
 
                     console.log('文件已准备好上传:', {
                         fileName: file.name,

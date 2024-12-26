@@ -301,7 +301,7 @@ function initAPI() {
                             };
 
                             // 如果有文件数据，上传到 Storage
-                            if (cell.submission.file) {  // 改为使用 file 对象
+                            if (cell.submission.file) {
                                 try {
                                     // 生成安全的文件名
                                     const timestamp = Date.now();
@@ -315,17 +315,24 @@ function initAPI() {
                                         fileSize: cell.submission.file.size
                                     });
 
+                                    // 创建 FormData
+                                    const formData = new FormData();
+                                    formData.append('file', cell.submission.file);
+
                                     // 直接上传文件对象
                                     const { data, error: uploadError } = await supabaseClient
                                         .storage
                                         .from('submissions')
                                         .upload(safeFileName, cell.submission.file, {
-                                            contentType: cell.submission.fileType,
+                                            contentType: cell.submission.file.type, // 使用文件的实际类型
                                             cacheControl: '3600',
                                             upsert: true
                                         });
 
-                                    if (uploadError) throw uploadError;
+                                    if (uploadError) {
+                                        console.error('上传错误:', uploadError);
+                                        throw uploadError;
+                                    }
 
                                     // 获取文件的公共URL
                                     const { data: { publicUrl } } = supabaseClient
@@ -336,13 +343,13 @@ function initAPI() {
                                     processedSubmission.fileUrl = publicUrl;
                                     processedSubmission.fileName = originalName;
                                     processedSubmission.storagePath = safeFileName;
-                                    processedSubmission.fileType = cell.submission.fileType;
+                                    processedSubmission.fileType = cell.submission.file.type; // 使用文件的实际类型
                                     
                                     console.log('文件上传成功:', {
                                         publicUrl,
                                         fileName: originalName,
                                         storagePath: safeFileName,
-                                        fileType: cell.submission.fileType
+                                        fileType: cell.submission.file.type
                                     });
                                 } catch (error) {
                                     console.error('文件上传失败:', error);
