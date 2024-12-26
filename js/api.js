@@ -177,8 +177,8 @@ async function initAPI() {
                 try {
                     console.log('开始重置所有数据...');
                     
-                    // 删除所有游戏相关数据，但保留管理员账户
-                    const tables = ['scores', 'game_progress', 'questions'];
+                    // 删除所有游戏相关数据，包括用户数据和排行榜
+                    const tables = ['scores', 'game_progress', 'questions', 'users', 'leaderboard'];
                     
                     for (const table of tables) {
                         console.log(`正在清空 ${table} 表...`);
