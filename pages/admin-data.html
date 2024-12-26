@@ -22,6 +22,32 @@
                 </div>
             </div>
 
+            <!-- 排行榜 -->
+            <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+                <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">实时排行榜</h2>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                排名
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                团队
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                完成时间
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                操作
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody" class="bg-white divide-y divide-gray-200">
+                        <!-- 排行榜数据将在这里动态插入 -->
+                    </tbody>
+                </table>
+            </div>
+
             <!-- 团队选择器 -->
             <div class="mb-6">
                 <select id="teamSelector" class="w-full md:w-64 p-2 border rounded" onchange="loadTeamData()">
@@ -66,6 +92,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadTeams();
+            await updateLeaderboard();
             startAutoRefresh();
 
             // 添加游戏进度更新事件监听
@@ -73,46 +100,89 @@
                 console.log('收到游戏进度更新:', event.detail);
                 await refreshData();
             });
-
-            // 检查是否有待处理的更新
-            checkPendingUpdates();
         });
 
-        // 添加检查待处理更新的方法
-        async function checkPendingUpdates() {
+        // 更新排行榜
+        async function updateLeaderboard() {
             try {
-                const updates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
-                if (updates.length > 0) {
-                    console.log('发现待处理的更新:', updates);
-                    await refreshData();
-                    localStorage.setItem('pendingUpdates', '[]');
+                console.log('开始加载排行榜...');
+                const leaderboard = await window.API.getLeaderboard();
+                console.log('获取到的排行榜数据:', leaderboard);
+
+                const tbody = document.getElementById('leaderboardBody');
+                if (!tbody) {
+                    console.error('找不到排行榜表格体');
+                    return;
                 }
+
+                tbody.innerHTML = '';
+
+                if (!leaderboard || leaderboard.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                暂无数据
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                leaderboard.forEach((entry, index) => {
+                    const completionTime = new Date(entry.completion_time);
+                    const formattedTime = completionTime.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${index + 1}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${entry.team_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${formattedTime}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <button onclick="loadTeamDetails('${entry.team_name}')" class="text-indigo-600 hover:text-indigo-500">
+                                查看详情
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
             } catch (error) {
-                console.error('检查更新失败:', error);
+                console.error('更新排行榜失败:', error);
             }
         }
 
         // 修改 startAutoRefresh 函数
         function startAutoRefresh() {
-            // 每3秒检查一次更新
+            // 每10秒更新一次排行榜
             refreshInterval = setInterval(async () => {
-                try {
-                    // 强制清除缓存重新获取数据
-                    allTeamsData.clear();
-                    localStorage.removeItem('teamsCache');
-                    
-                    // 检查是否有更新标记
-                    if (localStorage.getItem('needsUpdate') === 'true' || 
-                        localStorage.getItem('gameUpdates')) {
-                        console.log('检测到数据更新，正在刷新...');
-                        await refreshData(true); // 传入 true 表示强制刷新
-                        localStorage.removeItem('needsUpdate');
-                        localStorage.removeItem('gameUpdates');
-                    }
-                } catch (error) {
-                    console.error('自动刷新失败:', error);
-                }
-            }, 3000);
+                await updateLeaderboard();
+            }, 10000);
+        }
+
+        // 修改 refreshData 函数
+        async function refreshData() {
+            await updateLeaderboard();
+            if (currentTeam) {
+                await loadTeamData();
+            }
+        }
+
+        // 添加加载团队详情的方法
+        async function loadTeamDetails(teamName) {
+            document.getElementById('teamSelector').value = teamName;
+            await loadTeamData();
         }
 
         // 修改 loadTeams 函数
@@ -310,29 +380,6 @@
             } catch (error) {
                 console.error('删除团队数据失败:', error);
                 alert('删除失败，请重试');
-            }
-        }
-
-        // 修改 refreshData 函数
-        async function refreshData(forceRefresh = false) {
-            try {
-                console.log('开始刷新数据, 强制刷新:', forceRefresh);
-                
-                if (forceRefresh) {
-                    // 清除所有缓存
-                    allTeamsData.clear();
-                    localStorage.removeItem('teamsCache');
-                }
-                
-                await loadTeams();
-                const currentTeam = document.getElementById('teamSelector').value;
-                if (currentTeam) {
-                    await loadTeamData();
-                }
-                
-                console.log('数据刷新完成');
-            } catch (error) {
-                console.error('刷新数据失败:', error);
             }
         }
 
