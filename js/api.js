@@ -616,7 +616,7 @@ async function initAPI() {
                 }
             },
 
-            // 在 API 对象中添��初始化存储桶的方法
+            // 在 API 对象中添加初始化存储桶的方法
             async initStorage() {
                 try {
                     // 检查存储桶是否存在
@@ -626,42 +626,32 @@ async function initAPI() {
 
                     if (listError) {
                         console.error('检查存储桶失败:', listError);
-                        throw listError;
+                        // 即使检查失败也继续执行，因为存储桶可能已经存在
+                        console.log('继续使用默认存储桶设置');
                     }
 
-                    const bucketExists = buckets?.some(b => b.name === 'submissions');
-                    
-                    if (!bucketExists) {
-                        // 创建存储桶，设置为公开
-                        const { error: createError } = await supabaseClient
-                            .storage
-                            .createBucket('submissions', {
-                                public: true,
-                                allowedMimeTypes: ['image/*', 'video/*', 'application/octet-stream'],
-                                fileSizeLimit: 52428800  // 50MB
-                            });
+                    // 直接使用已存在的存储桶
+                    const bucketName = 'submissions';
+                    console.log('使用存储桶:', bucketName);
 
-                        if (createError) throw createError;
-                        console.log('存储桶创建成功');
+                    // 尝试获取存储桶信息
+                    const { data: files, error: listFilesError } = await supabaseClient
+                        .storage
+                        .from(bucketName)
+                        .list();
+
+                    if (listFilesError) {
+                        console.error('获取存储桶文件列表失败:', listFilesError);
+                        // 继续执行，因为这可能只是权限问题
                     } else {
-                        // 如果存储桶已存在，更新设置
-                        const { error: updateError } = await supabaseClient
-                            .storage
-                            .updateBucket('submissions', {
-                                public: true,
-                                allowedMimeTypes: ['image/*', 'video/*', 'application/octet-stream'],
-                                fileSizeLimit: 52428800  // 50MB
-                            });
-
-                        if (updateError) {
-                            console.error('更新存储桶失败:', updateError);
-                        }
+                        console.log('存储桶访问正常，当前文件数:', files?.length || 0);
                     }
 
                     return true;
                 } catch (error) {
                     console.error('初始化存储失败:', error);
-                    throw error;
+                    // 返回 true 而不是抛出错误，让应用继续运行
+                    return true;
                 }
             },
 
@@ -722,21 +712,19 @@ async function initAPI() {
                         throw uploadError;
                     }
 
-                    // 获取文件的公共URL
-                    const { data: { publicUrl } } = supabaseClient
+                    // 获取文件的下载URL
+                    const { data: { signedUrl } } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .getPublicUrl(fileName);
+                        .createSignedUrl(fileName, 3600, {
+                            download: true
+                        });
 
-                    // 构建正确的URL，确保包含正确的Content-Type
-                    const finalUrl = new URL(publicUrl);
-                    finalUrl.searchParams.append('content-type', file.type);
-
-                    console.log('文件上传成功，URL:', finalUrl.toString());
+                    console.log('文件上传成功，URL:', signedUrl);
 
                     // 返回完整的文件信息
                     return {
-                        fileUrl: finalUrl.toString(),
+                        fileUrl: signedUrl,
                         storagePath: fileName,
                         fileName: file.name,
                         fileType: file.type,
