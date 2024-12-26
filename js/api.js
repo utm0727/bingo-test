@@ -696,15 +696,16 @@ function initAPI() {
                         fileSize: file.size
                     });
 
-                    // 创建文件的副本以确保正确的类型
-                    const fileBlob = new Blob([file], { type: file.type });
+                    // 确保文件类型正确
+                    const contentType = file.type || 'application/octet-stream';
+                    console.log('使用的Content-Type:', contentType);
 
                     // 上传文件
                     const { data, error: uploadError } = await supabaseClient
                         .storage
                         .from('submissions')
-                        .upload(fileName, fileBlob, {
-                            contentType: file.type,
+                        .upload(fileName, file, {
+                            contentType: contentType,
                             cacheControl: '3600',
                             upsert: true
                         });
@@ -723,7 +724,7 @@ function initAPI() {
                     console.log('文件上传成功:', {
                         fileName,
                         publicUrl,
-                        contentType: file.type
+                        contentType
                     });
 
                     return {

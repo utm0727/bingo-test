@@ -391,10 +391,24 @@ class BingoGame {
                         fileSize: file.size
                     });
 
-                    // 生成安全的文件名，保留原始扩展名
-                    const timestamp = Date.now();
+                    // 从原始文件名中获取扩展名
                     const originalExt = file.name.split('.').pop().toLowerCase();
-                    const safeFileName = `${this.currentUser.team_name}_${timestamp}.${originalExt}`;
+                    // 从MIME类型获取文件类型
+                    const mimeExt = file.type.split('/')[1];
+                    // 使用MIME类型的扩展名，如果没有则使用原始扩展名
+                    const fileExt = mimeExt || originalExt;
+                    
+                    // 生成安全的文件名
+                    const timestamp = Date.now();
+                    const safeFileName = `${this.currentUser.team_name}_${timestamp}.${fileExt}`;
+
+                    console.log('文件信息:', {
+                        originalExt,
+                        mimeExt,
+                        fileExt,
+                        safeFileName,
+                        mimeType: file.type
+                    });
 
                     // 如果是编辑模式且有旧文件，先删除旧文件
                     const oldSubmission = this.board[this.currentTaskIndex].submission;
@@ -418,7 +432,7 @@ class BingoGame {
                     submission.fileName = file.name;
                     submission.storagePath = storagePath;
                     submission.fileType = file.type;
-                    submission.originalExt = originalExt;
+                    submission.originalExt = fileExt;
 
                     console.log('文件已上传:', {
                         fileUrl,
