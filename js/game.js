@@ -187,7 +187,7 @@ class BingoGame {
                 // 未翻开的格子
                 cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600', 'transform', 'hover:scale-105', 'transition-transform');
                 cellDiv.innerHTML = `
-                    <div class="text-sm opacity-70">click</div>
+                    <div class="text-sm opacity-70">Click to reveal</div>
                 `;
             } else {
                 // 游戏已完成，显示所有题目
@@ -341,18 +341,18 @@ class BingoGame {
         try {
             // 检查当前任务索引是否有效
             if (this.currentTaskIndex === null || this.currentTaskIndex === undefined) {
-                console.error('无效的任务索引:', this.currentTaskIndex);
-                alert('提交失败：无效的任务索引');
+                console.error('Invalid task index:', this.currentTaskIndex);
+                alert('Submission failed: Invalid task index');
                 return;
             }
 
             // 检查当前格子是否存在
             if (!this.board || !this.board[this.currentTaskIndex]) {
-                console.error('找不到对应的格子:', {
+                console.error('Cannot find corresponding cell:', {
                     currentTaskIndex: this.currentTaskIndex,
                     boardLength: this.board?.length
                 });
-                alert('提交失败：找不到对应的格子');
+                alert('Submission failed: Cannot find corresponding cell');
                 return;
             }
 
@@ -362,7 +362,7 @@ class BingoGame {
 
             // 检查是否至少有一项内容（文字说明或文件）
             if (!description && !file) {
-                alert('请至少填写任务完成说明或上传文件');
+                alert('Please provide either a message or upload a file');
                 return;
             }
 
@@ -377,15 +377,15 @@ class BingoGame {
                 try {
                     // 添加文件大小检查
                     if (file.size > 50 * 1024 * 1024) { // 50MB 限制
-                        throw new Error('文件大小不能超过 50MB');
+                        throw new Error('File size cannot exceed 50MB');
                     }
 
                     // 检查文件类型
                     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-                        throw new Error('只支持图片或视频文件');
+                        throw new Error('Only image or video files are supported');
                     }
 
-                    console.log('处理文件上传:', {
+                    console.log('Processing file upload:', {
                         fileName: file.name,
                         fileType: file.type,
                         fileSize: file.size
@@ -402,20 +402,20 @@ class BingoGame {
                     const timestamp = Date.now();
                     const safeFileName = `${this.currentUser.team_name}_${timestamp}.${fileExt}`;
 
-                    // 如果是编辑模式且有旧文件，先删除旧文件
+                    // If in edit mode and there's an old file, delete it first
                     const oldSubmission = this.board[this.currentTaskIndex].submission;
                     if (oldSubmission && oldSubmission.storagePath) {
                         try {
                             await window.API.deleteFile(oldSubmission.storagePath);
-                            console.log('旧文件已删除:', oldSubmission.storagePath);
+                            console.log('Old file deleted:', oldSubmission.storagePath);
                         } catch (error) {
-                            console.error('删除旧文件失败:', error);
+                            console.error('Failed to delete old file:', error);
                         }
                     }
 
                     // 直接上传原始文件
                     const { fileUrl, storagePath } = await window.API.uploadFile(safeFileName, file);
-                    
+
                     // 更新提交对象
                     submission.fileUrl = fileUrl;
                     submission.fileName = file.name;
@@ -423,7 +423,7 @@ class BingoGame {
                     submission.fileType = file.type;
                     submission.originalName = file.name;  // 保存原始文件名
 
-                    console.log('文件已上传:', {
+                    console.log('File uploaded:', {
                         fileUrl,
                         fileName: file.name,
                         storagePath,
@@ -431,13 +431,13 @@ class BingoGame {
                         originalExt
                     });
                 } catch (error) {
-                    console.error('文件处理失败:', error);
+                    console.error('File processing failed:', error);
                     alert(error.message);
                     return;
                 }
             }
 
-            console.log('准备更新格子状态:', {
+            console.log('Preparing to update cell status:', {
                 index: this.currentTaskIndex,
                 currentCell: this.board[this.currentTaskIndex]
             });
@@ -452,7 +452,7 @@ class BingoGame {
             try {
                 // 保存进度
                 await this.saveProgress();
-                console.log('任务提交成功，包含文件:', !!file);
+                console.log('Task submission successful, includes file:', !!file);
 
                 // 关闭对话框
                 this.closeTaskModal();
@@ -467,7 +467,7 @@ class BingoGame {
                     await this.handleGameComplete(totalTime);
                 }
             } catch (error) {
-                console.error('保存进度失败:', error);
+                console.error('Failed to save progress:', error);
                 // 回滚状态
                 this.board[this.currentTaskIndex] = {
                     ...this.board[this.currentTaskIndex],
@@ -477,8 +477,8 @@ class BingoGame {
                 throw error;
             }
         } catch (error) {
-            console.error('提交任务失败:', error);
-            alert('提交失败：' + (error.message || '请重试'));
+            console.error('Task submission failed:', error);
+            alert('Submission failed: ' + (error.message || 'Please try again'));
         }
     }
 
@@ -548,7 +548,7 @@ class BingoGame {
     // 添加游戏完成处理方法
     async handleGameComplete(totalTime) {
         try {
-            console.log('游戏完成！总用时:', totalTime);
+            console.log('Game completed! Total time:', totalTime);
             
             // 保存分数
             await window.API.updateScore(this.currentUser.team_name, totalTime);
@@ -560,13 +560,13 @@ class BingoGame {
                 if (timeDisplay) {
                     const minutes = Math.floor(totalTime / 60000);
                     const seconds = Math.floor((totalTime % 60000) / 1000);
-                    timeDisplay.textContent = `${minutes}分${seconds}秒`;
+                    timeDisplay.textContent = `${minutes}m ${seconds}s`;
                 }
                 bingoModal.classList.remove('hidden');
             }
         } catch (error) {
-            console.error('处理游戏完成失败:', error);
-            alert('保存游戏记录失败，请刷新页面重试');
+            console.error('Failed to handle game completion:', error);
+            alert('Failed to save game record, please refresh and try again');
         }
     }
 
@@ -620,9 +620,9 @@ class BingoGame {
 
         let content = `
             <div class="max-h-[80vh] overflow-y-auto">
-                <h3 class="text-lg font-bold mb-4">提交详情</h3>
+                <h3 class="text-lg font-bold mb-4">Submission Details</h3>
                 <div class="mb-4">
-                    <div class="font-medium mb-2">题目 ${index + 1}:</div>
+                    <div class="font-medium mb-2">Task ${index + 1}:</div>
                     <div class="text-gray-700 mb-4">${cell.question}</div>
                 </div>`;
 
@@ -631,7 +631,7 @@ class BingoGame {
             const submitTime = new Date(cell.submission.timestamp).toLocaleString('zh-CN');
             content += `
                 <div class="mb-4">
-                    <div class="font-medium mb-2">提交时间:</div>
+                    <div class="font-medium mb-2">Submission Time:</div>
                     <div class="text-gray-700">${submitTime}</div>
                 </div>`;
         }
@@ -640,7 +640,7 @@ class BingoGame {
         if (cell.submission.description) {
             content += `
                 <div class="mb-4">
-                    <div class="font-medium mb-2">完成说明:</div>
+                    <div class="font-medium mb-2">Message:</div>
                     <div class="text-gray-700 whitespace-pre-wrap">${cell.submission.description}</div>
                 </div>`;
         }
@@ -650,26 +650,26 @@ class BingoGame {
             const fileType = cell.submission.fileType || '';
             content += `
                 <div class="mb-4">
-                    <div class="font-medium mb-2">提交文件:</div>
+                    <div class="font-medium mb-2">Submitted File:</div>
                     <div class="text-sm text-gray-600 mb-2">${cell.submission.fileName}</div>
                     <div class="border rounded-lg p-4 bg-gray-50">`;
             
             if (fileType.startsWith('image/')) {
                 content += `
-                    <img src="${cell.submission.fileUrl}" alt="提交图片" 
+                    <img src="${cell.submission.fileUrl}" alt="Submitted Image" 
                          class="max-w-full h-auto rounded-lg mb-2 mx-auto">`;
             } else if (fileType.startsWith('video/')) {
                 content += `
                     <video src="${cell.submission.fileUrl}" controls 
                            class="max-w-full h-auto rounded-lg mb-2 mx-auto">
-                        您的浏览器不支持视频播放
+                        Your browser does not support video playback
                     </video>`;
             }
             
             content += `
                     <a href="${cell.submission.fileUrl}" target="_blank" 
                        class="inline-block mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
-                        下载文件
+                        Download File
                     </a>
                 </div>
             </div>`;
@@ -681,7 +681,7 @@ class BingoGame {
                 <div class="mt-4 text-right">
                     <button onclick="Swal.close(); window.game.showTaskModal(${index}, true)" 
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        编辑提交
+                        Edit Submission
                     </button>
                 </div>`;
         }
