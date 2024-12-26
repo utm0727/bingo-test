@@ -498,49 +498,66 @@ class BingoGame {
         if (!cell || !cell.submission) return;
 
         let content = `
-            <h3 class="text-lg font-bold mb-4">提交详情</h3>
-            <div class="mb-4">
-                <div class="font-medium mb-2">题目 ${index + 1}:</div>
-                <div class="text-gray-700">${cell.question}</div>
-            </div>`;
+            <div class="max-h-[80vh] overflow-y-auto">
+                <h3 class="text-lg font-bold mb-4">提交详情</h3>
+                <div class="mb-4">
+                    <div class="font-medium mb-2">题目 ${index + 1}:</div>
+                    <div class="text-gray-700 mb-4">${cell.question}</div>
+                </div>`;
 
-        if (cell.submission.description) {
+        // 显示提交时间
+        if (cell.submission.timestamp) {
+            const submitTime = new Date(cell.submission.timestamp).toLocaleString('zh-CN');
             content += `
                 <div class="mb-4">
-                    <div class="font-medium mb-2">描述:</div>
-                    <div class="text-gray-700">${cell.submission.description}</div>
+                    <div class="font-medium mb-2">提交时间:</div>
+                    <div class="text-gray-700">${submitTime}</div>
                 </div>`;
         }
 
+        // 显示描述
+        if (cell.submission.description) {
+            content += `
+                <div class="mb-4">
+                    <div class="font-medium mb-2">完成说明:</div>
+                    <div class="text-gray-700 whitespace-pre-wrap">${cell.submission.description}</div>
+                </div>`;
+        }
+
+        // 显示文件（如果有）
         if (cell.submission.fileUrl) {
             const fileType = cell.submission.fileType || '';
             content += `
                 <div class="mb-4">
                     <div class="font-medium mb-2">提交文件:</div>
-                    <div class="text-sm text-gray-600 mb-2">${cell.submission.fileName}</div>`;
+                    <div class="text-sm text-gray-600 mb-2">${cell.submission.fileName}</div>
+                    <div class="border rounded-lg p-4 bg-gray-50">`;
             
             if (fileType.startsWith('image/')) {
                 content += `
-                    <img src="${cell.submission.fileUrl}" alt="提交图片" class="max-w-full h-auto mb-2">`;
+                    <img src="${cell.submission.fileUrl}" alt="提交图片" 
+                         class="max-w-full h-auto rounded-lg mb-2 mx-auto">`;
             } else if (fileType.startsWith('video/')) {
                 content += `
-                    <video src="${cell.submission.fileUrl}" controls class="max-w-full h-auto mb-2">
+                    <video src="${cell.submission.fileUrl}" controls 
+                           class="max-w-full h-auto rounded-lg mb-2 mx-auto">
                         您的浏览器不支持视频播放
                     </video>`;
             }
             
             content += `
                     <a href="${cell.submission.fileUrl}" target="_blank" 
-                       class="text-blue-500 hover:text-blue-600">
+                       class="inline-block mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
                         下载文件
                     </a>
-                </div>`;
+                </div>
+            </div>`;
         }
 
         // 如果游戏未完成，添加编辑按钮
         if (!this.isBingo) {
             content += `
-                <div class="mt-4">
+                <div class="mt-4 text-right">
                     <button onclick="window.game.showTaskModal(${index}, true)" 
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         编辑提交
@@ -548,12 +565,18 @@ class BingoGame {
                 </div>`;
         }
 
+        content += '</div>'; // 关闭滚动容器
+
         // 使用 SweetAlert2 显示对话框
         Swal.fire({
             html: content,
             width: '600px',
             showConfirmButton: false,
-            showCloseButton: true
+            showCloseButton: true,
+            customClass: {
+                container: 'swal-wide',
+                popup: 'swal-tall'
+            }
         });
     }
 }
