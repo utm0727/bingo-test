@@ -90,11 +90,12 @@ class BingoGame {
                 throw new Error('获取题目失败或题目数量不足');
             }
             
-            // 创建新的游戏板
+            // 创建新的游戏板，初始状态下所有格子都是未翻开的
             this.board = questions.map(q => ({
-                id: q.id,  // 添加题目ID
+                id: q.id,
                 question: q.question,
-                flipped: false
+                flipped: false,  // 初始状态为未翻开
+                completed: false
             }));
             
             console.log('创建的新游戏板:', this.board);
@@ -135,16 +136,19 @@ class BingoGame {
         gameBoard.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
         gameBoard.style.gap = '1rem';
         gameBoard.style.padding = '1rem';
+        gameBoard.style.maxWidth = '800px';
+        gameBoard.style.margin = '0 auto';
 
         // 渲染每个格子
         this.board.forEach((cell, index) => {
             const cellDiv = document.createElement('div');
             
-            // 添加基础样式
-            cellDiv.className = 'p-4 rounded shadow cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center text-center';
+            // 添加基础样式 - 使用 aspect-ratio 确保正方形
+            cellDiv.className = 'relative aspect-square rounded shadow cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center p-4 overflow-hidden';
             
             // 根据状态添加额外样式
             if (cell.completed) {
+                // 已完成的格子
                 cellDiv.classList.add('bg-green-100', 'text-green-900', 'hover:bg-green-200');
                 let content = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
@@ -161,11 +165,19 @@ class BingoGame {
                 }
                 
                 cellDiv.innerHTML = content;
-            } else {
+            } else if (cell.flipped) {
+                // 已翻开但未完成的格子
                 cellDiv.classList.add('bg-white', 'hover:bg-gray-50');
                 cellDiv.innerHTML = `
                     <div class="text-lg font-medium mb-2">题目 ${index + 1}</div>
                     <div class="text-sm">${cell.question}</div>
+                `;
+            } else {
+                // 未翻开的格子
+                cellDiv.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+                cellDiv.innerHTML = `
+                    <div class="text-xl font-bold">题目 ${index + 1}</div>
+                    <div class="text-sm mt-2">点击翻开</div>
                 `;
             }
 
